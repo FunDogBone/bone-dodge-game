@@ -88,12 +88,7 @@
         };
 
         const bags = [];
-        const platforms = [
-            { x: 0, y: 550, width: 800, height: 50 },
-            { x: 200, y: 400, width: 200, height: 20 },
-            { x: 400, y: 300, width: 200, height: 20 },
-            { x: 600, y: 200, width: 150, height: 20 }
-        ];
+        const platforms = [];
 
         let score = 0;
         let gameSpeed = 3;
@@ -116,6 +111,19 @@
             }
         }
 
+        function generateRandomPlatforms() {
+            platforms.length = 0;
+            const platformCount = Math.min(5 + level, 10);
+
+            for (let i = 0; i < platformCount; i++) {
+                const width = Math.random() * 150 + 100;
+                const height = 20;
+                const x = Math.random() * (canvas.width - width);
+                const y = canvas.height - (i + 1) * (canvas.height / (platformCount + 1));
+                platforms.push({ x, y, width, height });
+            }
+        }
+
         function drawPlatforms() {
             platforms.forEach(platform => {
                 ctx.drawImage(platformImage, platform.x, platform.y, platform.width, platform.height);
@@ -129,6 +137,9 @@
 
             // Draw skeleton
             ctx.drawImage(skeletonImage, skeleton.x, skeleton.y, skeleton.width, skeleton.height);
+
+            // Draw bone at skeleton's location
+            ctx.drawImage(boneImage, skeleton.x + skeleton.width / 2 - 20, skeleton.y + skeleton.height + 10, 40, 40);
 
             // Draw dog
             if (!dog.onGround) {
@@ -219,9 +230,9 @@
         function resetLevel() {
             dog.x = 100;
             dog.y = 500;
-            platforms.forEach((platform, index) => {
-                platform.y = 550 - index * 150;
-            });
+            generateRandomPlatforms();
+            skeleton.x = canvas.width / 2 - skeleton.width / 2;
+            skeleton.y = 50;
         }
 
         function startGame() {
