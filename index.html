@@ -84,32 +84,44 @@
         const audioControls = document.getElementById('audioControls');
         const finalScoreElement = document.getElementById('finalScore');
 
-        const dogImage = new Image();
-        dogImage.src = 'Dog.png';
+        // Asset paths
+        const assets = {
+            dogImage: 'Dog.png',
+            skeletonImage: 'Skeleton.png',
+            platformImage: 'island.png',
+            backgroundImage: 'Background.png',
+            backgroundMusic: 'Big Dawgs Need a Bone.mp3'
+        };
 
-        const skeletonImage = new Image();
-        skeletonImage.src = 'Skeleton.png';
+        // Preloaded assets
+        const images = {};
+        let backgroundMusic;
 
-        const platformImage = new Image();
-        platformImage.src = 'island.png';
+        // Preloading function
+        function preloadAssets(callback) {
+            const totalAssets = Object.keys(assets).length - 1; // Exclude background music
+            let loadedAssets = 0;
 
-        const backgroundImage = new Image();
-        backgroundImage.src = 'Background.png';
+            for (const [key, src] of Object.entries(assets)) {
+                if (key === 'backgroundMusic') {
+                    backgroundMusic = new Audio(src);
+                    backgroundMusic.loop = true;
+                    loadedAssets++;
+                    if (loadedAssets === totalAssets) callback();
+                    continue;
+                }
 
-        dogImage.onload = () => console.log('Dog image loaded successfully.');
-        dogImage.onerror = () => console.error('Failed to load Dog.png.');
+                const img = new Image();
+                img.src = src;
+                img.onload = () => {
+                    images[key] = img;
+                    loadedAssets++;
+                    if (loadedAssets === totalAssets) callback();
+                };
+                img.onerror = () => console.error(`Failed to load ${src}`);
+            }
+        }
 
-        skeletonImage.onload = () => console.log('Skeleton image loaded successfully.');
-        skeletonImage.onerror = () => console.error('Failed to load Skeleton.png.');
-
-        platformImage.onload = () => console.log('Platform image loaded successfully.');
-        platformImage.onerror = () => console.error('Failed to load island.png.');
-
-        backgroundImage.onload = () => console.log('Background image loaded successfully.');
-        backgroundImage.onerror = () => console.error('Failed to load Background.png.');
-
-        let backgroundMusic = new Audio('Big Dawgs Need a Bone.mp3');
-        backgroundMusic.loop = true;
         let isMuted = false;
         let gameRunning = false;
         let level = 1;
@@ -190,7 +202,7 @@
 
         function drawPlatforms() {
             platforms.forEach(platform => {
-                ctx.drawImage(platformImage, platform.x, platform.y, platform.width, platform.height);
+                ctx.drawImage(images.platformImage, platform.x, platform.y, platform.width, platform.height);
             });
         }
 
@@ -200,16 +212,16 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             // Draw background
-            ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+            ctx.drawImage(images.backgroundImage, 0, 0, canvas.width, canvas.height);
 
             // Draw platforms
             drawPlatforms();
 
             // Draw dog
-            ctx.drawImage(dogImage, dog.x, dog.y, dog.width, dog.height);
+            ctx.drawImage(images.dogImage, dog.x, dog.y, dog.width, dog.height);
 
             // Draw skeleton
-            ctx.drawImage(skeletonImage, skeleton.x, skeleton.y, skeleton.width, skeleton.height);
+            ctx.drawImage(images.skeletonImage, skeleton.x, skeleton.y, skeleton.width, skeleton.height);
 
             // Dog movement
             if (!dog.onGround) {
@@ -240,8 +252,10 @@
             if (e.code === 'Space' && dog.onGround) dog.velocityY = dog.jumpSpeed;
         });
 
-        generatePlatforms();
-        gameLoop();
+        preloadAssets(() => {
+            generatePlatforms();
+            gameLoop();
+        });
 
     </script>
 </body>
