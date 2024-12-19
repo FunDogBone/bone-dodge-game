@@ -34,13 +34,24 @@
         const boneImage = new Image();
         boneImage.src = "Bone.png"; // Use your uploaded file path here
 
-        // Game variables
+        const skeletonImage = new Image();
+        skeletonImage.src = "Skeleton.png"; // Add skeleton image path here
+
+        const dogImage = new Image();
+        dogImage.src = "Dog.png"; // Add dog image path here
+
+        const skeleton = {
+            x: 700,
+            y: 100,
+            width: 80,
+            height: 80,
+        };
+
         const dog = {
             x: 100,
             y: 500,
             width: 50,
             height: 50,
-            color: 'blue',
             jumpSpeed: -15,
             gravity: 0.5,
             velocityY: 0,
@@ -51,11 +62,10 @@
         let score = 0;
         let gameSpeed = 5;
 
-        // Bone class
         class Bone {
             constructor() {
-                this.x = 800;
-                this.y = Math.random() * 300 + 300; // Spawn height range
+                this.x = skeleton.x - 20;
+                this.y = skeleton.y + 50;
                 this.width = 40;
                 this.height = 40;
                 this.speed = gameSpeed;
@@ -70,9 +80,11 @@
             }
         }
 
-        // Game loop
         function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw skeleton
+            ctx.drawImage(skeletonImage, skeleton.x, skeleton.y, skeleton.width, skeleton.height);
 
             // Update dog
             if (!dog.onGround) {
@@ -85,8 +97,7 @@
                 dog.onGround = true;
             }
 
-            ctx.fillStyle = dog.color;
-            ctx.fillRect(dog.x, dog.y, dog.width, dog.height);
+            ctx.drawImage(dogImage, dog.x, dog.y, dog.width, dog.height);
 
             // Spawn bones
             if (Math.random() < 0.02) {
@@ -143,7 +154,7 @@
         });
 
         // Start game
-        boneImage.onload = () => {
+        boneImage.onload = skeletonImage.onload = dogImage.onload = () => {
             gameLoop();
         };
     </script>
