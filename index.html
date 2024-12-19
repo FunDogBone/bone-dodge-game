@@ -108,6 +108,11 @@
   <source src="Big%20Dawgs%20Need%20a%20Bone.mp3" type="audio/mpeg">
 </audio>
 
+<!-- Added coin sound effect -->
+<audio id="coin-sound">
+  <source src="coin.mp3" type="audio/mpeg">
+</audio>
+
 <script>
 // ------ CONFIGURATION ------
 const GAME_WIDTH = 800;
@@ -142,7 +147,6 @@ dogImage.src = 'Dog.png';
 const boneImage = document.getElementById('bone-image');
 boneImage.src = 'Bone.png';
 
-// Updated ship to PNG and larger size
 const shipImage = document.getElementById('ship-image');
 shipImage.src = 'Ship.png';
 
@@ -157,6 +161,7 @@ backgroundImage.src = 'Background.png';
 
 // ------ AUDIO ------
 const bgMusic = document.getElementById('bg-music');
+const coinSound = document.getElementById('coin-sound');
 let musicMuted = false;
 
 // ------ BUTTONS ------
@@ -201,7 +206,6 @@ window.addEventListener('keyup', (e) => {
 // ------ GAME VARIABLES ------
 let level = 1;
 let dog = {x: 100, y: 500, width: DOG_WIDTH, height: DOG_HEIGHT, vy:0, onGround:false};
-// Make the ship bigger
 let ship = {x: 400, y: 50, width: 120, height: 75, vx:2};
 let bone = {x: 380, y: 100, width:50, height:50};
 let bags = [];
@@ -256,7 +260,7 @@ function difficultyAdjustments() {
 function generatePlatforms(level) {
   platforms = [];
 
-  // Adjust bottom platforms based on level (introduce gaps at higher levels)
+  // Adjust bottom platforms based on level (introduce gaps)
   let bottomPlatforms = [];
   if (level <= 5) {
     // One big bottom platform
@@ -267,7 +271,6 @@ function generatePlatforms(level) {
     let halfWidth = (GAME_WIDTH - 100) / 2; 
     bottomPlatforms.push({x:0, y: GAME_HEIGHT - 50, width: halfWidth, height:50});
     bottomPlatforms.push({x:halfWidth+100, y: GAME_HEIGHT - 50, width: halfWidth, height:50});
-    // Dog starts on the left platform
     dog.x = 50;
   } else {
     // Three bottom platforms: two gaps
@@ -275,7 +278,6 @@ function generatePlatforms(level) {
     bottomPlatforms.push({x:0, y: GAME_HEIGHT - 50, width: segmentWidth, height:50});
     bottomPlatforms.push({x:segmentWidth+100, y: GAME_HEIGHT - 50, width: segmentWidth, height:50});
     bottomPlatforms.push({x:2*(segmentWidth+100), y: GAME_HEIGHT - 50, width: segmentWidth, height:50});
-    // Dog starts on the leftmost bottom platform
     dog.x = 50;
   }
 
@@ -283,7 +285,7 @@ function generatePlatforms(level) {
     platforms.push(bp);
   }
 
-  dog.y = GAME_HEIGHT - 150; // start slightly above the bottom platform(s)
+  dog.y = GAME_HEIGHT - 150;
   dog.onGround = false;
   dog.vy = 0;
 
@@ -358,7 +360,6 @@ function updateDog() {
   dog.onGround = false;
   for (let p of platforms) {
     if (rectCollision(dog, p)) {
-      // Land on platform
       dog.y = p.y - dog.height;
       dog.vy = 0;
       dog.onGround = true;
@@ -405,7 +406,6 @@ function updateBags() {
     b.y += b.vy;
     b.vy += 0.1; // slight gravity to bags
   }
-  // Remove off-screen bags
   bags = bags.filter(b => b.y < GAME_HEIGHT+100 && b.x > -100 && b.x < GAME_WIDTH+100);
 }
 
@@ -419,6 +419,9 @@ function checkCollisions() {
 
   // Check if dog got the bone
   if (rectCollision(dog, bone)) {
+    // Play coin sound before moving to next level
+    coinSound.currentTime = 0;
+    coinSound.play();
     nextLevel();
   }
 }
@@ -450,7 +453,7 @@ function draw() {
     // Draw bone
     ctx.drawImage(boneImage, bone.x, bone.y, bone.width, bone.height);
 
-    // Draw ship (now larger)
+    // Draw ship
     ctx.drawImage(shipImage, ship.x, ship.y, ship.width, ship.height);
 
     // Draw bags
@@ -502,5 +505,4 @@ showTitleScreen();
 </script>
 </body>
 </html>
-
 
