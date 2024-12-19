@@ -1,117 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Dog and Bone Game</title>
+<style>
+  body {
+    margin: 0;
+    background: #000;
+    font-family: sans-serif;
+    user-select: none;
+    overflow: hidden;
+  }
+
+  #game-container {
+    position: relative;
+    text-align: center;
+  }
+
+  /* Overlay elements for UI */
+  .overlay-button {
+    position: absolute;
+    z-index: 10;
+    background: rgba(0,0,0,0.5);
+    color: #fff;
+    border: 2px solid #fff;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 16px;
+    text-transform: uppercase;
+  }
+
+  #start-button, #mute-button, #restart-button, #send-bone-button {
+    display: none;
+  }
+
+  #mute-button {
+    top: 10px;
+    right: 10px;
+  }
+
+  #start-button {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+  }
+
+  #restart-button {
+    top: 60%;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  #send-bone-button {
+    top: 70%;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  #game-over-text {
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Press Start 2P', monospace;
+    font-size: 32px;
+    color: #fff;
+    display: none;
+    z-index: 10;
+  }
+</style>
+</head>
+<body>
+<div id="game-container">
+  <canvas id="gameCanvas"></canvas>
+  <img id="title-image" style="display:none;" />
+  <img id="dog-image" style="display:none;" />
+  <img id="bone-image" style="display:none;" />
+  <img id="ship-image" style="display:none;" />
+  <img id="bag-image" style="display:none;" />
+  <img id="island-image" style="display:none;" />
+  <img id="background-image" style="display:none;" />
+
+  <div id="game-over-text">GAME OVER</div>
+  <button id="start-button" class="overlay-button">Start</button>
+  <button id="mute-button" class="overlay-button">Mute</button>
+  <button id="restart-button" class="overlay-button">Restart</button>
+  <button id="send-bone-button" class="overlay-button">Send Bone</button>
+</div>
+
+<audio id="bg-music" loop>
+  <source src="Big%20Dawgs%20Need%20a%20Bone.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+// ------ CONFIGURATION ------
+const GAME_WIDTH = 800;
+const GAME_HEIGHT = 600;
+const GRAVITY = 0.6;
+const JUMP_FORCE = -12;
+const DOG_SPEED = 5;
+const LEVEL_COUNT = 100; // max difficulty scale
+// Platform configuration per level could be dynamic. For simplicity, we generate a pattern.
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = GAME_WIDTH;
+canvas.height = GAME_HEIGHT;
+
+// ------ GAME STATES ------
+const STATE_TITLE = 0;
+const STATE_PLAY = 1;
+const STATE_GAME_OVER = 2;
+
+let gameState = STATE_TITLE;
+
+// ------ IMAGES ------
+const titleImage = document.getElementById('title-image');
+titleImage.src = 'Title.png';
+
+const dogImage = document.getElementById('dog-image');
+dogImage.src = 'Dog.png';
+
+const boneImage = document.getElementById('bone-image');
+boneImage.src = 'Bone.png';
+
+const shipImage = document.getElementById('ship-image');
+shipImage.src = 'Ship.gif';
+
+const bagImage = document.getElementById('bag-image');
+bagImage.src = 'Bag.png';
+
+const islandImage = document.getElementById('island-image');
+islandImage.src = 'island.png';
+
+const backgroundImage = document.getElementById('background-image');
+backgroundImage.src = 'Background.png';
+
+// ------ AUDIO ------
+const bgMusic = document.getElementById('bg-music');
+let musicMuted = false;
+
+// ------ BUTTONS ------
+const startButton = document.getElementById('start-button');
+const muteButton = document.getElementById('mute-button');
+const restartButton = document.getElementById('restart-button');
+const sendBoneButton = document.getElementById('send-bone-button');
+const gameOverText = document.getElementById('game-over-text');
+
+startButton.addEventListener('click', () => {
+  startGame();
+});
+
+muteButton.addEventListener('click', () => {
+  musicMuted = !musicMuted;
+  if(musicMuted) {
+    bgMusic.pause();
+    muteButton.textContent = 'Unmute';
+  } else {
+    bgMusic.play();
+    muteButton.textContent = 'Mute';
+  }
+});
+
+restartButton.addEventListener('click', () => {
+  resetGame();
+});
+
+sendBoneButton.addEventListener('click', () => {
+  window.open('https://www.snek.fun/token/9153c43be41fc6f057524f98755c947494e59422a584409cf358a3ac.426f6e65','_blank');
+});
+
+// ------ INPUT HANDLING ------
+let keys = {};
+window.addEventListener('keydown', (e) => {
+  keys[e.code] = true;
+});
+window.addEventListener('keyup', (e) => {
+  keys[e.code] = false;
+});
+
+// ------ GAME VARIABLES ------
+let level = 1;
+let dog = {x: 100, y: 500, width: 50, height: 50, vy:0, onGround:false};
+let ship = {x: 400, y: 50, width: 80, height: 50, vx:2};
+let bone = {x: 380, y: 100, width:50, height:50};
+let bags = [];
+let platforms = [];
+
+let throwTimer = 0;
+let throwInterval = 120; // decreases with level to increase difficulty
+let gameOver = false;
+
+// Generate platforms function for a given level
+function generatePlatforms(level) {
+  // Clear current platforms
+  platforms = [];
+  // As the level increases, platforms get smaller and more spread out
+  let count = Math.max(5, 10 - Math.floor(level/10));
+  let gap = 120 + level * 5; 
+  let platformWidth = 100 - Math.min(level * 2, 80); 
+  let platformHeight = 20;
+  
+  let currentY = GAME_HEIGHT - 100;
+  for (let i=0; i<count; i++){
+    let x = Math.random()*(GAME_WIDTH - platformWidth);
+    platforms.push({x:x, y:currentY, width: platformWidth, height: platformHeight});
+    currentY -= gap;
+  }
+  // Ensure the bone platform near the top
+  bone.y = Math.max(100, platforms[platforms.length-1].y - 60);
+  bone.x = GAME_WIDTH/2 - bone.width/2;
+}
+
+// ------ COLLISION DETECTION ------
+function rectCollision(a,b) {
+  return (a.x < b.x+b.width && 
+          a.x+a.width > b.x &&
+          a.y < b.y+b.height &&
+          a.y+a.height > b.y);
+}
+
+// ------ GAME LOGIC FUNCTIONS ------
 function startGame() {
-    console.log("Start Game button clicked");
-    titleScreen.classList.add('hidden');
-    canvas.classList.remove('hidden');
-    muteButton.classList.remove('hidden');
-    backgroundMusic.play();
-    console.log("Background music started");
+  // Hide title screen elements
+  startButton.style.display = 'none';
+  // Show mute button in game
+  muteButton.style.display = 'block';
 
-    resetGame();
-    gameRunning = true;
-    console.log("Game loop started");
-    gameLoop();
+  bgMusic.currentTime = 0;
+  if(!musicMuted) bgMusic.play();
+
+  resetGame();
 }
 
-function moveSpaceship() {
-    spaceship.x += spaceship.speed;
-    if (spaceship.x <= 0 || spaceship.x + spaceship.width >= canvas.width) {
-        spaceship.speed *= -1;
-        console.log("Spaceship changed direction");
-    }
+function resetGame() {
+  gameState = STATE_PLAY;
+  gameOver = false;
+  gameOverText.style.display = 'none';
+  restartButton.style.display = 'none';
+  sendBoneButton.style.display = 'none';
+
+  level = 1;
+  dog.x = 100;
+  dog.y = 500;
+  dog.vy = 0;
+  dog.onGround = false;
+  ship.x = 400;
+  ship.y = 50;
+  ship.vx = 2;
+  bags = [];
+  difficultyAdjustments();
+
+  animate();
 }
 
-function generatePlatforms() {
-    console.log("Generating platforms...");
-    platforms.length = 0;
-    platforms.push({ x: 0, y: canvas.height - 20, width: canvas.width, height: 20 });
-    const count = Math.min(level + 3, 8);
-    for (let i = 1; i <= count; i++) {
-        const width = Math.random() * 150 + 100;
-        const x = Math.random() * (canvas.width - width);
-        const y = canvas.height - i * 100;
-        platforms.push({ x, y, width, height: 20 });
-    }
-    console.log("Platforms generated:", platforms);
+function difficultyAdjustments() {
+  // Increase difficulty based on level
+  // Faster bag throwing, maybe homing in more aggressively
+  throwInterval = Math.max(60, 120 - level);
+  generatePlatforms(level);
 }
 
-function gameLoop() {
-    if (!gameRunning) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    drawPlatforms();
-
-    if (!dog.onGround) dog.velocityY += dog.gravity;
-    dog.y += dog.velocityY;
-    dog.onGround = false;
-
-    platforms.forEach(p => {
-        if (
-            dog.x < p.x + p.width &&
-            dog.x + dog.width > p.x &&
-            dog.y + dog.height >= p.y &&
-            dog.y + dog.height <= p.y + p.height
-        ) {
-            dog.y = p.y - dog.height;
-            dog.velocityY = 0;
-            dog.onGround = true;
-        }
-    });
-
-    ctx.drawImage(dogImage, dog.x, dog.y, dog.width, dog.height);
-
-    moveSpaceship();
-    ctx.drawImage(spaceshipImage, spaceship.x, spaceship.y, spaceship.width, spaceship.height);
-
-    if (Math.random() < 0.02 * level) {
-        bags.push(new Bag(dog.x + dog.width / 2));
-        console.log("Bag spawned targeting dog at x:", dog.x);
-    }
-
-    bags.forEach((bag, i) => {
-        bag.update();
-        bag.draw();
-
-        if (
-            dog.x < bag.x + bag.width &&
-            dog.x + dog.width > bag.x &&
-            dog.y < bag.y + bag.height &&
-            dog.y + dog.height > bag.y
-        ) {
-            console.log("Dog hit by bag");
-            endGame();
-        }
-
-        if (bag.y > canvas.height) {
-            console.log("Bag removed (offscreen)");
-            bags.splice(i, 1);
-        }
-    });
-
-    ctx.drawImage(boneImage, canvas.width / 2 - 40, 20, 80, 80);
-
-    if (
-        dog.x < canvas.width / 2 + 40 &&
-        dog.x + dog.width > canvas.width / 2 - 40 &&
-        dog.y < 100
-    ) {
-        console.log("Dog reached the bone. Level up!");
-        level++;
-        score += 100;
-        generatePlatforms();
-    }
-
-    ctx.fillStyle = 'white';
-    ctx.fillText(`Score: ${score}`, 10, 20);
-    ctx.fillText(`Level: ${level}`, 10, 40);
-
-    requestAnimationFrame(gameLoop);
+function nextLevel() {
+  level++;
+  // Reset dog position for next level start
+  dog.x = 100;
+  dog.y = GAME_HEIGHT - 150;
+  dog.vy = 0;
+  dog.onGround = false;
+  bags = [];
+  difficultyAdjustments();
 }
 
 function endGame() {
-    console.log("Game Over. Final Score:", score);
-    gameRunning = false;
-    backgroundMusic.pause();
-    alert(`Game Over!\nScore: ${score}`);
-    resetGame();
+  gameOver = true;
+  gameState = STATE_GAME_OVER;
+  bgMusic.pause();
+  gameOverText.style.display = 'block';
+  restartButton.style.display = 'block';
+  sendBoneButton.style.display = 'block';
 }
+
+function updateDog() {
+  // Horizontal movement
+  if (keys['ArrowLeft'] || keys['KeyA']) {
+    dog.x -= DOG_SPEED;
+  }
+  if (keys['ArrowRight'] || keys['KeyD']) {
+    dog.x += DOG_SPEED;
+  }
+
+  // Jump
+  if ((keys['ArrowUp'] || keys['Space'] || keys['KeyW']) && dog.onGround) {
+    dog.vy = JUMP_FORCE;
+    dog.onGround = false;
+  }
+
+  // Gravity
+  dog.vy += GRAVITY;
+  dog.y += dog.vy;
+
+  // Collide with platforms
+  dog.onGround = false;
+  for (let p of platforms) {
+    if (rectCollision(dog, p)) {
+      // Land on platform
+      dog.y = p.y - dog.height;
+      dog.vy = 0;
+      dog.onGround = true;
+    }
+  }
+
+  // Boundaries
+  if (dog.x < 0) dog.x = 0;
+  if (dog.x + dog.width > GAME_WIDTH) dog.x = GAME_WIDTH - dog.width;
+  if (dog.y > GAME_HEIGHT) {
+    // Fell off screen = game over
+    endGame();
+  }
+}
+
+function updateShip() {
+  ship.x += ship.vx;
+  if (ship.x < 0 || ship.x + ship.width > GAME_WIDTH) {
+    ship.vx *= -1;
+  }
+
+  // Throw bags
+  throwTimer++;
+  if (throwTimer > throwInterval) {
+    throwTimer = 0;
+    // Create a bag aimed roughly at dog
+    let bagSpeed = 3 + level*0.1;
+    let angle = Math.atan2(dog.y - ship.y, dog.x - ship.x);
+    let vx = Math.cos(angle)*bagSpeed;
+    let vy = Math.sin(angle)*bagSpeed;
+    bags.push({x:ship.x+ship.width/2, y:ship.y+ship.height, width:30, height:30, vx:vx, vy:vy});
+  }
+}
+
+function updateBags() {
+  for (let b of bags) {
+    b.x += b.vx;
+    b.y += b.vy;
+    // Gravity to bags?
+    b.vy += 0.1;
+  }
+  // Remove off-screen bags
+  bags = bags.filter(b => b.y < GAME_HEIGHT+100 && b.x > -100 && b.x < GAME_WIDTH+100);
+}
+
+function checkCollisions() {
+  // Check bag-dog collision
+  for (let b of bags) {
+    if (rectCollision(dog,b)) {
+      endGame();
+    }
+  }
+
+  // Check if dog got the bone
+  if (rectCollision(dog, bone)) {
+    // Next level
+    nextLevel();
+  }
+}
+
+function draw() {
+  // Background
+  ctx.drawImage(backgroundImage, 0,0, GAME_WIDTH, GAME_HEIGHT);
+
+  if (gameState === STATE_TITLE) {
+    // Draw title
+    ctx.drawImage(titleImage, GAME_WIDTH/2 - titleImage.width/2, GAME_HEIGHT/4);
+    // Start button is handled via HTML/CSS
+  } else if (gameState === STATE_PLAY) {
+    // Draw platforms
+    ctx.fillStyle = 'green';
+    for (let p of platforms) {
+      ctx.drawImage(islandImage, p.x, p.y, p.width, p.height);
+    }
+
+    // Draw bone
+    ctx.drawImage(boneImage, bone.x, bone.y, bone.width, bone.height);
+
+    // Draw ship
+    ctx.drawImage(shipImage, ship.x, ship.y, ship.width, ship.height);
+
+    // Draw bags
+    for (let b of bags) {
+      ctx.drawImage(bagImage, b.x, b.y, b.width, b.height);
+    }
+
+    // Draw dog
+    ctx.drawImage(dogImage, dog.x, dog.y, dog.width, dog.height);
+
+    // HUD: Display Level
+    ctx.fillStyle = '#fff';
+    ctx.font = '20px sans-serif';
+    ctx.fillText('Level: ' + level, 20, 30);
+  } else if (gameState === STATE_GAME_OVER) {
+    // Game over handled by overlay
+    // Just draw background or final frame
+    ctx.drawImage(backgroundImage, 0,0, GAME_WIDTH, GAME_HEIGHT);
+  }
+}
+
+function animate() {
+  if (gameState === STATE_PLAY) {
+    updateDog();
+    updateShip();
+    updateBags();
+    checkCollisions();
+  }
+
+  ctx.clearRect(0,0,GAME_WIDTH,GAME_HEIGHT);
+  draw();
+
+  if (!gameOver) {
+    requestAnimationFrame(animate);
+  }
+}
+
+// Initial display setup for title screen
+function showTitleScreen() {
+  startButton.style.display = 'block';
+  muteButton.style.display = 'none';
+  restartButton.style.display = 'none';
+  sendBoneButton.style.display = 'none';
+  gameOverText.style.display = 'none';
+
+  ctx.drawImage(titleImage, GAME_WIDTH/2 - titleImage.width/2, GAME_HEIGHT/4);
+}
+
+showTitleScreen();
+</script>
+</body>
+</html>
