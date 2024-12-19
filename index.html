@@ -15,7 +15,8 @@
         canvas {
             display: block;
             margin: auto;
-            background-color: #333;
+            background: url('Background.png') no-repeat center center;
+            background-size: cover;
         }
         #title {
             font-family: Arial, sans-serif;
@@ -49,14 +50,20 @@
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const boneImage = new Image();
-        boneImage.src = "Bone.png";
+        const bagImage = new Image();
+        bagImage.src = "Bag.png";
 
         const skeletonImage = new Image();
         skeletonImage.src = "Skeleton.png";
 
         const dogImage = new Image();
         dogImage.src = "Dog.png";
+
+        const platformImage = new Image();
+        platformImage.src = "island.png";
+
+        const boneImage = new Image();
+        boneImage.src = "Bone.png";
 
         let gameRunning = false;
         let level = 1;
@@ -80,7 +87,7 @@
             onGround: true
         };
 
-        const bones = [];
+        const bags = [];
         const platforms = [
             { x: 0, y: 550, width: 800, height: 50 },
             { x: 200, y: 400, width: 200, height: 20 },
@@ -91,7 +98,7 @@
         let score = 0;
         let gameSpeed = 3;
 
-        class Bone {
+        class Bag {
             constructor() {
                 this.x = skeleton.x + skeleton.width / 2;
                 this.y = skeleton.y + skeleton.height;
@@ -105,14 +112,13 @@
             }
 
             draw() {
-                ctx.drawImage(boneImage, this.x, this.y, this.width, this.height);
+                ctx.drawImage(bagImage, this.x, this.y, this.width, this.height);
             }
         }
 
         function drawPlatforms() {
-            ctx.fillStyle = 'gray';
             platforms.forEach(platform => {
-                ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                ctx.drawImage(platformImage, platform.x, platform.y, platform.width, platform.height);
             });
         }
 
@@ -146,30 +152,30 @@
 
             ctx.drawImage(dogImage, dog.x, dog.y, dog.width, dog.height);
 
-            // Spawn bones
+            // Spawn bags
             if (Math.random() < 0.02) {
-                bones.push(new Bone());
+                bags.push(new Bag());
             }
 
-            // Update bones
-            for (let i = bones.length - 1; i >= 0; i--) {
-                bones[i].update();
-                bones[i].draw();
+            // Update bags
+            for (let i = bags.length - 1; i >= 0; i--) {
+                bags[i].update();
+                bags[i].draw();
 
                 // Check collision
                 if (
-                    dog.x < bones[i].x + bones[i].width &&
-                    dog.x + dog.width > bones[i].x &&
-                    dog.y < bones[i].y + bones[i].height &&
-                    dog.y + dog.height > bones[i].y
+                    dog.x < bags[i].x + bags[i].width &&
+                    dog.x + dog.width > bags[i].x &&
+                    dog.y < bags[i].y + bags[i].height &&
+                    dog.y + dog.height > bags[i].y
                 ) {
                     alert('Game Over! Your score: ' + score);
                     resetGame();
                 }
 
-                // Remove offscreen bones
-                if (bones[i].y > canvas.height) {
-                    bones.splice(i, 1);
+                // Remove offscreen bags
+                if (bags[i].y > canvas.height) {
+                    bags.splice(i, 1);
                 }
             }
 
@@ -200,7 +206,7 @@
 
         function resetGame() {
             gameRunning = false;
-            bones.length = 0;
+            bags.length = 0;
             score = 0;
             level = 1;
             gameSpeed = 3;
@@ -213,9 +219,9 @@
         function resetLevel() {
             dog.x = 100;
             dog.y = 500;
-            platforms[1].y -= 20;
-            platforms[2].y -= 20;
-            platforms[3].y -= 20;
+            platforms.forEach((platform, index) => {
+                platform.y = 550 - index * 150;
+            });
         }
 
         function startGame() {
@@ -238,7 +244,7 @@
         });
 
         // Start game when images load
-        boneImage.onload = skeletonImage.onload = dogImage.onload = () => {
+        boneImage.onload = bagImage.onload = skeletonImage.onload = platformImage.onload = dogImage.onload = () => {
             resetGame();
         };
     </script>
