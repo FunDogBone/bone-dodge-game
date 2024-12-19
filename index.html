@@ -253,16 +253,7 @@
             gameRunning = false;
             backgroundMusic.pause();
             alert(`Game Over!\nScore: ${score}`);
-            restartGame();
-        }
-
-        function restartGame() {
-            canvas.classList.remove('hidden');
-            backgroundMusic.currentTime = 0;
-            backgroundMusic.play();
             resetGame();
-            gameRunning = true;
-            gameLoop();
         }
 
         function resetGame() {
@@ -273,6 +264,8 @@
             dog.velocityY = 0;
             bags.length = 0;
             generatePlatforms();
+            gameRunning = true;
+            gameLoop();
         }
 
         function toggleMute() {
@@ -291,3 +284,4 @@
     </script>
 </body>
 </html>
+
