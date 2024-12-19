@@ -117,9 +117,9 @@ const JUMP_FORCE = -12;
 const DOG_SPEED = 5;
 const DOG_WIDTH = 64;
 const DOG_HEIGHT = 64;
-// We will ensure platforms are placed in a manner that dog can always reach the bone.
-// Keep vertical gaps reasonable (about 80-100px).
-const BASE_GAP = 90; 
+
+// As difficulty increases, we vary platform arrangements.
+// We keep vertical gaps within dog's jump range.
 const LEVEL_COUNT = 100; // max difficulty scale
 
 const canvas = document.getElementById('gameCanvas');
@@ -231,8 +231,8 @@ function resetGame() {
   sendBoneButton.style.display = 'none';
 
   level = 1;
-  dog.x = 100;
-  dog.y = GAME_HEIGHT - 150; // start on a stable bottom platform
+  dog.width = DOG_WIDTH;
+  dog.height = DOG_HEIGHT;
   dog.vy = 0;
   dog.onGround = false;
   ship.x = 400;
@@ -255,46 +255,75 @@ function difficultyAdjustments() {
 
 function generatePlatforms(level) {
   platforms = [];
-  // Always add a bottom "floor" platform so dog doesn't fall immediately
-  platforms.push({x:0, y: GAME_HEIGHT - 50, width: GAME_WIDTH, height: 50});
 
-  // The number of intermediate platforms decreases as level goes up, but ensure at least a few
-  let count = Math.max(5, 10 - Math.floor(level/10));
-
-  // Adjust gap slightly based on level. Keep it around 80-100.
-  let gap = BASE_GAP + Math.min(level,20); // won't get too large
-  let platformWidth = 120 - Math.min(level * 2, 80); // gets smaller with level
-  let platformHeight = 20;
-
-  // We'll arrange platforms in a "staircase" pattern so dog can always reach the next one.
-  // Start from near bottom above the floor platform
-  let currentY = GAME_HEIGHT - 150;
-  // We'll alternate the platform position left-right so that dog can always move a bit horizontally to reach them.
-  // For variety, alternate left and right side positions.
-  let leftSide = true;
-
-  for (let i=0; i<count; i++){
-    let x;
-    if (leftSide) {
-      x = 50; // left side
-    } else {
-      x = GAME_WIDTH - 50 - platformWidth; // right side
-    }
-    leftSide = !leftSide;
-
-    platforms.push({x:x, y:currentY, width: platformWidth, height: platformHeight});
-    currentY -= gap;
+  // Adjust bottom platforms based on level (introduce gaps at higher levels)
+  // Dog must start on a platform at the bottom
+  let bottomPlatforms = [];
+  if (level <= 5) {
+    // One big bottom platform
+    bottomPlatforms.push({x:0, y:GAME_HEIGHT - 50, width: GAME_WIDTH, height: 50});
+    dog.x = 100;
+  } else if (level <= 10) {
+    // Two bottom platforms: a gap in the middle
+    let halfWidth = (GAME_WIDTH - 100) / 2; 
+    bottomPlatforms.push({x:0, y: GAME_HEIGHT - 50, width: halfWidth, height:50});
+    bottomPlatforms.push({x:halfWidth+100, y: GAME_HEIGHT - 50, width: halfWidth, height:50});
+    // Dog starts on the left platform
+    dog.x = 50;
+  } else {
+    // Three bottom platforms: two gaps
+    let segmentWidth = (GAME_WIDTH - 200) / 3; 
+    bottomPlatforms.push({x:0, y: GAME_HEIGHT - 50, width: segmentWidth, height:50});
+    bottomPlatforms.push({x:segmentWidth+100, y: GAME_HEIGHT - 50, width: segmentWidth, height:50});
+    bottomPlatforms.push({x:2*(segmentWidth+100), y: GAME_HEIGHT - 50, width: segmentWidth, height:50});
+    // Dog starts on the leftmost bottom platform
+    dog.x = 50;
   }
 
-  // Place the bone platform near the top, slightly centered
-  let topPlatform = platforms[platforms.length - 1];
-  bone.y = Math.max(100, topPlatform.y - 60);
-  bone.x = GAME_WIDTH/2 - bone.width/2;
+  for (let bp of bottomPlatforms) {
+    platforms.push(bp);
+  }
+
+  dog.y = GAME_HEIGHT - 150; // start slightly above the bottom platform(s)
+  dog.onGround = false;
+  dog.vy = 0;
+
+  // Number of intermediate platforms reduces with difficulty
+  let count = Math.max(5, 10 - Math.floor(level/10));
+  let gap = 80 + (level * 2); 
+  let platformWidth = 120 - Math.min(level * 2, 80); 
+  let platformHeight = 20;
+
+  // We'll create a vertical chain of platforms from bottom upwards
+  // Start from dog's initial position
+  let currentY = GAME_HEIGHT - 150;
+  let currentX = dog.x;
+  
+  // Function to ensure platforms remain inside game boundaries
+  function clampX(x, width) {
+    if (x < 0) return 0;
+    if (x + width > GAME_WIDTH) return GAME_WIDTH - width;
+    return x;
+  }
+
+  // As difficulty increases, horizontal randomness increases
+  let horizontalRange = 100 + level * 2;
+  horizontalRange = Math.min(horizontalRange, 200); // cap randomness
+  for (let i=0; i<count; i++) {
+    currentY -= gap;
+    let offset = Math.floor(Math.random()* (2*horizontalRange) - horizontalRange);
+    let newX = clampX(currentX + offset, platformWidth);
+    platforms.push({x:newX, y:currentY, width: platformWidth, height: platformHeight});
+    currentX = newX; // update currentX for next step
+  }
+
+  // Place bone above the top platform
+  bone.y = Math.max(100, currentY - 60);
+  bone.x = GAME_WIDTH/2 - bone.width/2; 
 }
 
 function nextLevel() {
   level++;
-  // Reset dog position for next level start
   dog.x = 100;
   dog.y = GAME_HEIGHT - 150;
   dog.vy = 0;
@@ -373,8 +402,7 @@ function updateBags() {
   for (let b of bags) {
     b.x += b.vx;
     b.y += b.vy;
-    // Add a bit of gravity to bags
-    b.vy += 0.1;
+    b.vy += 0.1; // slight gravity to bags
   }
   // Remove off-screen bags
   bags = bags.filter(b => b.y < GAME_HEIGHT+100 && b.x > -100 && b.x < GAME_WIDTH+100);
@@ -429,7 +457,7 @@ function draw() {
       ctx.drawImage(bagImage, b.x, b.y, b.width, b.height);
     }
 
-    // Draw dog (larger size)
+    // Draw dog
     ctx.drawImage(dogImage, dog.x, dog.y, dog.width, dog.height);
 
     // HUD: Display Level
@@ -473,3 +501,4 @@ showTitleScreen();
 </script>
 </body>
 </html>
+
