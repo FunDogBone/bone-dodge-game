@@ -197,11 +197,12 @@
             titleScreen.classList.add('hidden');
             canvas.classList.remove('hidden');
             backgroundMusic.play();
-            startGame();
+            resetGame();
         }
 
         function resetGame() {
             gameOverScreen.classList.add('hidden');
+            canvas.classList.remove('hidden');
             score = 0;
             level = 1;
             gameSpeed = 3;
