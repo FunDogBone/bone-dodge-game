@@ -31,101 +31,22 @@
         .hidden {
             display: none;
         }
-        #gameOverText {
-            position: absolute;
-            top: 40%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: white;
-            font-family: 'Press Start 2P', cursive;
-            font-size: 24px;
-            text-align: center;
-            display: none;
-            z-index: 10;
-        }
-        #gameOverButtons {
-            position: absolute;
-            top: 55%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            display: none;
-            z-index: 10;
-        }
-        #audioControls {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            z-index: 20;
-        }
     </style>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div id="audioControls" class="hidden">
-        <button id="muteButton" onclick="toggleMute()">Mute</button>
-    </div>
     <div id="titleScreen">
-        <button class="button" onclick="startGameFromTitle()">Start Game</button>
+        <h1>Every Dawg Needs a Bone</h1>
+        <button class="button" onclick="startGame()">Start Game</button>
     </div>
+
     <canvas id="gameCanvas" width="800" height="600" class="hidden"></canvas>
-    <div id="gameOverText">Game Over - Stay Hard<br><span id="finalScore">Final Score: 0</span></div>
-    <div id="gameOverButtons">
-        <button class="button" onclick="resetGame()">Restart Game</button>
-        <button class="button" onclick="goToHomeScreen()">Go to Home Screen</button>
-        <button class="button" onclick="sendBone()">Send BONE 🦴</button>
-    </div>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const titleScreen = document.getElementById('titleScreen');
-        const gameOverText = document.getElementById('gameOverText');
-        const gameOverButtons = document.getElementById('gameOverButtons');
-        const audioControls = document.getElementById('audioControls');
-        const finalScoreElement = document.getElementById('finalScore');
 
-        // Asset paths
-        const assets = {
-            dogImage: 'Dog.png',
-            skeletonImage: 'Skeleton.png',
-            platformImage: 'island.png',
-            backgroundImage: 'Background.png',
-            backgroundMusic: 'Big Dawgs Need a Bone.mp3'
-        };
-
-        // Preloaded assets
-        const images = {};
-        let backgroundMusic;
-
-        // Preloading function
-        function preloadAssets(callback) {
-            const totalAssets = Object.keys(assets).length - 1; // Exclude background music
-            let loadedAssets = 0;
-
-            for (const [key, src] of Object.entries(assets)) {
-                if (key === 'backgroundMusic') {
-                    backgroundMusic = new Audio(src);
-                    backgroundMusic.loop = true;
-                    loadedAssets++;
-                    if (loadedAssets === totalAssets) callback();
-                    continue;
-                }
-
-                const img = new Image();
-                img.src = src;
-                img.onload = () => {
-                    images[key] = img;
-                    loadedAssets++;
-                    if (loadedAssets === totalAssets) callback();
-                };
-                img.onerror = () => console.error(`Failed to load ${src}`);
-            }
-        }
-
-        let isMuted = false;
         let gameRunning = false;
-        let level = 1;
-        let score = 0;
 
         const dog = {
             x: 100,
@@ -139,71 +60,29 @@
             onGround: true
         };
 
-        const skeleton = {
-            x: 400,
-            y: 50,
-            width: 80,
-            height: 80,
-            speed: 2
-        };
+        const platforms = [
+            { x: 0, y: 550, width: 800, height: 50 },
+            { x: 200, y: 400, width: 150, height: 20 },
+            { x: 500, y: 300, width: 150, height: 20 }
+        ];
 
-        const platforms = [];
-
-        function toggleMute() {
-            isMuted = !isMuted;
-            backgroundMusic.muted = isMuted;
-            document.getElementById('muteButton').innerText = isMuted ? 'Unmute' : 'Mute';
-        }
-
-        function startGameFromTitle() {
+        function startGame() {
             titleScreen.classList.add('hidden');
             canvas.classList.remove('hidden');
-            audioControls.classList.remove('hidden');
-            backgroundMusic.play();
-            resetGame();
-        }
-
-        function showGameOver() {
-            gameRunning = false;
-            gameOverText.style.display = 'block';
-            gameOverButtons.style.display = 'flex';
-            finalScoreElement.innerText = `Final Score: ${score}`;
-        }
-
-        function resetGame() {
-            gameOverText.style.display = 'none';
-            gameOverButtons.style.display = 'none';
-            score = 0;
-            level = 1;
             gameRunning = true;
-            generatePlatforms();
             gameLoop();
         }
 
-        function goToHomeScreen() {
-            gameOverText.style.display = 'none';
-            gameOverButtons.style.display = 'none';
-            titleScreen.classList.remove('hidden');
-            canvas.classList.add('hidden');
-            audioControls.classList.add('hidden');
-            backgroundMusic.pause();
-        }
-
-        function sendBone() {
-            window.open('https://www.snek.fun/token/9153c43be41fc6f057524f98755c947494e59422a584409cf358a3ac.426f6e65', '_blank');
-        }
-
-        function generatePlatforms() {
-            platforms.length = 0;
-            platforms.push({ x: 0, y: canvas.height - 50, width: canvas.width, height: 50 }); // Ground platform
-            platforms.push({ x: 300, y: 400, width: 150, height: 20 });
-            platforms.push({ x: 500, y: 300, width: 150, height: 20 });
-        }
-
         function drawPlatforms() {
+            ctx.fillStyle = 'brown';
             platforms.forEach(platform => {
-                ctx.drawImage(images.platformImage, platform.x, platform.y, platform.width, platform.height);
+                ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
             });
+        }
+
+        function drawDog() {
+            ctx.fillStyle = 'blue';
+            ctx.fillRect(dog.x, dog.y, dog.width, dog.height);
         }
 
         function gameLoop() {
@@ -211,25 +90,17 @@
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Draw background
-            ctx.drawImage(images.backgroundImage, 0, 0, canvas.width, canvas.height);
-
-            // Draw platforms
             drawPlatforms();
+            drawDog();
 
-            // Draw dog
-            ctx.drawImage(images.dogImage, dog.x, dog.y, dog.width, dog.height);
-
-            // Draw skeleton
-            ctx.drawImage(images.skeletonImage, skeleton.x, skeleton.y, skeleton.width, skeleton.height);
-
-            // Dog movement
+            // Apply gravity
             if (!dog.onGround) {
                 dog.velocityY += dog.gravity;
             }
             dog.y += dog.velocityY;
             dog.onGround = false;
 
+            // Check platform collisions
             platforms.forEach(platform => {
                 if (
                     dog.x < platform.x + platform.width &&
@@ -251,12 +122,6 @@
             if (e.code === 'ArrowRight') dog.x += dog.speed;
             if (e.code === 'Space' && dog.onGround) dog.velocityY = dog.jumpSpeed;
         });
-
-        preloadAssets(() => {
-            generatePlatforms();
-            gameLoop();
-        });
-
     </script>
 </body>
 </html>
