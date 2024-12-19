@@ -31,4 +31,121 @@
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const boneImage = new Ima
+        const boneImage = new Image();
+        boneImage.src = "Bone.png"; // Use your uploaded file path here
+
+        // Game variables
+        const dog = {
+            x: 100,
+            y: 500,
+            width: 50,
+            height: 50,
+            color: 'blue',
+            jumpSpeed: -15,
+            gravity: 0.5,
+            velocityY: 0,
+            onGround: true
+        };
+
+        const bones = [];
+        let score = 0;
+        let gameSpeed = 5;
+
+        // Bone class
+        class Bone {
+            constructor() {
+                this.x = 800;
+                this.y = Math.random() * 300 + 300; // Spawn height range
+                this.width = 40;
+                this.height = 40;
+                this.speed = gameSpeed;
+            }
+
+            update() {
+                this.x -= this.speed;
+            }
+
+            draw() {
+                ctx.drawImage(boneImage, this.x, this.y, this.width, this.height);
+            }
+        }
+
+        // Game loop
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Update dog
+            if (!dog.onGround) {
+                dog.velocityY += dog.gravity;
+            }
+            dog.y += dog.velocityY;
+            if (dog.y >= 500) {
+                dog.y = 500;
+                dog.velocityY = 0;
+                dog.onGround = true;
+            }
+
+            ctx.fillStyle = dog.color;
+            ctx.fillRect(dog.x, dog.y, dog.width, dog.height);
+
+            // Spawn bones
+            if (Math.random() < 0.02) {
+                bones.push(new Bone());
+            }
+
+            // Update bones
+            for (let i = bones.length - 1; i >= 0; i--) {
+                bones[i].update();
+                bones[i].draw();
+
+                // Check collision
+                if (
+                    dog.x < bones[i].x + bones[i].width &&
+                    dog.x + dog.width > bones[i].x &&
+                    dog.y < bones[i].y + bones[i].height &&
+                    dog.y + dog.height > bones[i].y
+                ) {
+                    alert('Game Over! Your score: ' + score);
+                    resetGame();
+                }
+
+                // Remove offscreen bones
+                if (bones[i].x + bones[i].width < 0) {
+                    bones.splice(i, 1);
+                    score++;
+                    if (score % 5 === 0) gameSpeed += 0.5;
+                }
+            }
+
+            // Display score
+            ctx.fillStyle = 'white';
+            ctx.font = '20px Arial';
+            ctx.fillText('Score: ' + score, 10, 30);
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function resetGame() {
+            bones.length = 0;
+            score = 0;
+            gameSpeed = 5;
+            dog.y = 500;
+            dog.velocityY = 0;
+            dog.onGround = true;
+        }
+
+        // Jump mechanic
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && dog.onGround) {
+                dog.velocityY = dog.jumpSpeed;
+                dog.onGround = false;
+            }
+        });
+
+        // Start game
+        boneImage.onload = () => {
+            gameLoop();
+        };
+    </script>
+</body>
+</html>
