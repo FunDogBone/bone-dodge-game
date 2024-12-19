@@ -93,7 +93,8 @@
         <p>Game Over - Stay Hard</p>
         <p id="finalScore">Final Score: 0</p>
         <button class="button" onclick="resetGame()">Restart Game</button>
-        <button class="button">Send BONE 🦴</button>
+        <button class="button" onclick="goToHomeScreen()">Go to Home Screen</button>
+        <button class="button" onclick="sendBone()">Send BONE 🦴</button>
     </div>
 
     <script>
@@ -211,6 +212,17 @@
             dog.velocityY = 0;
             generateRandomPlatforms();
             startGame();
+        }
+
+        function goToHomeScreen() {
+            gameOverScreen.classList.add('hidden');
+            titleScreen.classList.remove('hidden');
+            canvas.classList.add('hidden');
+            backgroundMusic.pause();
+        }
+
+        function sendBone() {
+            window.open('https://www.snek.fun/token/9153c43be41fc6f057524f98755c947494e59422a584409cf358a3ac.426f6e65', '_blank');
         }
 
         function startGame() {
