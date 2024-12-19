@@ -1,287 +1,117 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Every Dog Needs a Bone</title>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: black;
-            color: white;
-            text-align: center;
-        }
-        canvas {
-            display: block;
-            margin: auto;
-            background: url('Background.png') no-repeat center center;
-            background-size: cover;
-        }
-        .hidden {
-            display: none;
-        }
-        #titleScreen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: url('Title.png') no-repeat center center;
-            background-size: cover;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 10;
-        }
-        .button {
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            background-color: #444;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            margin-top: 20px;
-        }
-        .button:hover {
-            background-color: #666;
-        }
-        #muteButton {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            padding: 5px 10px;
-            background-color: #444;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-    </style>
-</head>
-<body>
-    <div id="titleScreen">
-        <button class="button" onclick="startGame()">Start Game</button>
-    </div>
+function startGame() {
+    console.log("Start Game button clicked");
+    titleScreen.classList.add('hidden');
+    canvas.classList.remove('hidden');
+    muteButton.classList.remove('hidden');
+    backgroundMusic.play();
+    console.log("Background music started");
 
-    <canvas id="gameCanvas" width="800" height="600" class="hidden"></canvas>
+    resetGame();
+    gameRunning = true;
+    console.log("Game loop started");
+    gameLoop();
+}
 
-    <button id="muteButton" class="hidden" onclick="toggleMute()">Mute</button>
+function moveSpaceship() {
+    spaceship.x += spaceship.speed;
+    if (spaceship.x <= 0 || spaceship.x + spaceship.width >= canvas.width) {
+        spaceship.speed *= -1;
+        console.log("Spaceship changed direction");
+    }
+}
 
-    <audio id="backgroundMusic" loop>
-        <source src="Big Dawgs Need a Bone.mp3" type="audio/mpeg">
-    </audio>
+function generatePlatforms() {
+    console.log("Generating platforms...");
+    platforms.length = 0;
+    platforms.push({ x: 0, y: canvas.height - 20, width: canvas.width, height: 20 });
+    const count = Math.min(level + 3, 8);
+    for (let i = 1; i <= count; i++) {
+        const width = Math.random() * 150 + 100;
+        const x = Math.random() * (canvas.width - width);
+        const y = canvas.height - i * 100;
+        platforms.push({ x, y, width, height: 20 });
+    }
+    console.log("Platforms generated:", platforms);
+}
 
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const titleScreen = document.getElementById('titleScreen');
-        const muteButton = document.getElementById('muteButton');
-        const backgroundMusic = document.getElementById('backgroundMusic');
+function gameLoop() {
+    if (!gameRunning) return;
 
-        const bagImage = new Image();
-        bagImage.src = "Bag.png";
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        const dogImage = new Image();
-        dogImage.src = "Dog.png";
+    drawPlatforms();
 
-        const platformImage = new Image();
-        platformImage.src = "island.png";
+    if (!dog.onGround) dog.velocityY += dog.gravity;
+    dog.y += dog.velocityY;
+    dog.onGround = false;
 
-        const boneImage = new Image();
-        boneImage.src = "Bone.png";
-
-        const spaceshipImage = new Image();
-        spaceshipImage.src = "Ship.gif";
-
-        let gameRunning = false;
-        let level = 1;
-        let score = 0;
-        let muted = false;
-
-        const dog = {
-            x: 100,
-            y: 500,
-            width: 50,
-            height: 50,
-            speed: 5,
-            jumpSpeed: -15,
-            gravity: 0.5,
-            velocityY: 0,
-            onGround: true
-        };
-
-        const spaceship = {
-            x: 300,
-            y: 50,
-            width: 100,
-            height: 100,
-            speed: 2
-        };
-
-        const platforms = [];
-        const bags = [];
-
-        class Bag {
-            constructor(targetX) {
-                this.x = spaceship.x + spaceship.width / 2;
-                this.y = spaceship.y + spaceship.height;
-                this.width = 40;
-                this.height = 40;
-                this.speedY = 3 + level;
-                this.speedX = (targetX - this.x) / 50;
-            }
-
-            update() {
-                this.y += this.speedY;
-                this.x += this.speedX;
-            }
-
-            draw() {
-                ctx.drawImage(bagImage, this.x, this.y, this.width, this.height);
-            }
-        }
-
-        function generatePlatforms() {
-            platforms.length = 0;
-            platforms.push({ x: 0, y: canvas.height - 20, width: canvas.width, height: 20 });
-            const count = Math.min(level + 3, 8);
-            for (let i = 1; i <= count; i++) {
-                const width = Math.random() * 150 + 100;
-                const x = Math.random() * (canvas.width - width);
-                const y = canvas.height - i * 100;
-                platforms.push({ x, y, width, height: 20 });
-            }
-        }
-
-        function drawPlatforms() {
-            platforms.forEach(p => ctx.drawImage(platformImage, p.x, p.y, p.width, p.height));
-        }
-
-        function moveSpaceship() {
-            spaceship.x += spaceship.speed;
-            if (spaceship.x <= 0 || spaceship.x + spaceship.width >= canvas.width) {
-                spaceship.speed *= -1;
-            }
-        }
-
-        function startGame() {
-            titleScreen.classList.add('hidden');
-            canvas.classList.remove('hidden');
-            muteButton.classList.remove('hidden');
-            backgroundMusic.play();
-
-            resetGame();
-            gameRunning = true;
-            gameLoop();
-        }
-
-        function gameLoop() {
-            if (!gameRunning) return;
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            drawPlatforms();
-
-            // Dog gravity and movement
-            if (!dog.onGround) dog.velocityY += dog.gravity;
-            dog.y += dog.velocityY;
-            dog.onGround = false;
-
-            platforms.forEach(p => {
-                if (
-                    dog.x < p.x + p.width &&
-                    dog.x + dog.width > p.x &&
-                    dog.y + dog.height >= p.y &&
-                    dog.y + dog.height <= p.y + p.height
-                ) {
-                    dog.y = p.y - dog.height;
-                    dog.velocityY = 0;
-                    dog.onGround = true;
-                }
-            });
-
-            ctx.drawImage(dogImage, dog.x, dog.y, dog.width, dog.height);
-
-            // Spaceship and bags
-            moveSpaceship();
-            ctx.drawImage(spaceshipImage, spaceship.x, spaceship.y, spaceship.width, spaceship.height);
-
-            if (Math.random() < 0.02 * level) {
-                bags.push(new Bag(dog.x + dog.width / 2));
-            }
-
-            bags.forEach((bag, i) => {
-                bag.update();
-                bag.draw();
-
-                if (
-                    dog.x < bag.x + bag.width &&
-                    dog.x + dog.width > bag.x &&
-                    dog.y < bag.y + bag.height &&
-                    dog.y + dog.height > bag.y
-                ) {
-                    endGame();
-                }
-
-                if (bag.y > canvas.height) bags.splice(i, 1);
-            });
-
-            ctx.drawImage(boneImage, canvas.width / 2 - 40, 20, 80, 80);
-
-            // Level completion
-            if (
-                dog.x < canvas.width / 2 + 40 &&
-                dog.x + dog.width > canvas.width / 2 - 40 &&
-                dog.y < 100
-            ) {
-                level++;
-                score += 100;
-                generatePlatforms();
-            }
-
-            ctx.fillStyle = 'white';
-            ctx.fillText(`Score: ${score}`, 10, 20);
-            ctx.fillText(`Level: ${level}`, 10, 40);
-
-            requestAnimationFrame(gameLoop);
-        }
-
-        function endGame() {
-            gameRunning = false;
-            backgroundMusic.pause();
-            alert(`Game Over!\nScore: ${score}`);
-            resetGame();
-        }
-
-        function resetGame() {
-            level = 1;
-            score = 0;
-            dog.x = 100;
-            dog.y = 500;
+    platforms.forEach(p => {
+        if (
+            dog.x < p.x + p.width &&
+            dog.x + dog.width > p.x &&
+            dog.y + dog.height >= p.y &&
+            dog.y + dog.height <= p.y + p.height
+        ) {
+            dog.y = p.y - dog.height;
             dog.velocityY = 0;
-            bags.length = 0;
-            generatePlatforms();
-            gameRunning = true;
-            gameLoop();
+            dog.onGround = true;
+        }
+    });
+
+    ctx.drawImage(dogImage, dog.x, dog.y, dog.width, dog.height);
+
+    moveSpaceship();
+    ctx.drawImage(spaceshipImage, spaceship.x, spaceship.y, spaceship.width, spaceship.height);
+
+    if (Math.random() < 0.02 * level) {
+        bags.push(new Bag(dog.x + dog.width / 2));
+        console.log("Bag spawned targeting dog at x:", dog.x);
+    }
+
+    bags.forEach((bag, i) => {
+        bag.update();
+        bag.draw();
+
+        if (
+            dog.x < bag.x + bag.width &&
+            dog.x + dog.width > bag.x &&
+            dog.y < bag.y + bag.height &&
+            dog.y + dog.height > bag.y
+        ) {
+            console.log("Dog hit by bag");
+            endGame();
         }
 
-        function toggleMute() {
-            muted = !muted;
-            backgroundMusic.muted = muted;
-            muteButton.textContent = muted ? 'Unmute' : 'Mute';
+        if (bag.y > canvas.height) {
+            console.log("Bag removed (offscreen)");
+            bags.splice(i, 1);
         }
+    });
 
-        window.addEventListener('keydown', e => {
-            if (e.key === 'ArrowLeft') dog.x -= dog.speed;
-            if (e.key === 'ArrowRight') dog.x += dog.speed;
-            if (e.key === ' ') {
-                if (dog.onGround) dog.velocityY = dog.jumpSpeed;
-            }
-        });
-    </script>
-</body>
-</html>
+    ctx.drawImage(boneImage, canvas.width / 2 - 40, 20, 80, 80);
 
+    if (
+        dog.x < canvas.width / 2 + 40 &&
+        dog.x + dog.width > canvas.width / 2 - 40 &&
+        dog.y < 100
+    ) {
+        console.log("Dog reached the bone. Level up!");
+        level++;
+        score += 100;
+        generatePlatforms();
+    }
+
+    ctx.fillStyle = 'white';
+    ctx.fillText(`Score: ${score}`, 10, 20);
+    ctx.fillText(`Level: ${level}`, 10, 40);
+
+    requestAnimationFrame(gameLoop);
+}
+
+function endGame() {
+    console.log("Game Over. Final Score:", score);
+    gameRunning = false;
+    backgroundMusic.pause();
+    alert(`Game Over!\nScore: ${score}`);
+    resetGame();
+}
