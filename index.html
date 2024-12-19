@@ -145,6 +145,7 @@
         }
 
         function generatePlatforms() {
+            ("Generating platforms...");
             platforms.length = 0;
             platforms.push({ x: 0, y: canvas.height - 20, width: canvas.width, height: 20 });
             const count = Math.min(level + 3, 8);
@@ -154,6 +155,7 @@
                 const y = canvas.height - i * 100;
                 platforms.push({ x, y, width, height: 20 });
             }
+            ("Platforms generated:", platforms);
         }
 
         function drawPlatforms() {
@@ -161,26 +163,35 @@
         }
 
         function moveSpaceship() {
+            ("Spaceship position before move:", spaceship.x);
             spaceship.x += spaceship.speed;
             if (spaceship.x <= 0 || spaceship.x + spaceship.width >= canvas.width) {
                 spaceship.speed *= -1;
+                ("Spaceship changed direction");
             }
+            ("Spaceship position after move:", spaceship.x);
         }
 
-        function startGame() {
+        function startGame() { 
+            ("Start Game function called");
             titleScreen.classList.add('hidden');
             canvas.classList.remove('hidden');
             muteButton.classList.remove('hidden');
             backgroundMusic.play();
+            ("Background music playing, restting game...");
 
             resetGame();
             gameRunning = true;
-            gameLoop();
+            gameLoop("Game loop starting...");
         }
 
         function gameLoop() {
-            if (!gameRunning) return;
-
+            if (!gameRunning) {
+                ("Game loop stopped: gameRunning is false"); 
+                return;
+            }
+                    
+            ("Game loop executing...");
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             drawPlatforms();
@@ -197,6 +208,7 @@
                     dog.y + dog.height >= p.y &&
                     dog.y + dog.height <= p.y + p.height
                 ) {
+                    ("Dog landed on platform");
                     dog.y = p.y - dog.height;
                     dog.velocityY = 0;
                     dog.onGround = true;
@@ -223,10 +235,13 @@
                     dog.y < bag.y + bag.height &&
                     dog.y + dog.height > bag.y
                 ) {
+                    ("Dog hit by a bag");
                     endGame();
                 }
 
-                if (bag.y > canvas.height) bags.splice(i, 1);
+                if (bag.y > canvas.height) {
+                ("Bag removed off-screen");
+                    bags.splice(i, 1);
             });
 
             ctx.drawImage(boneImage, canvas.width / 2 - 40, 20, 80, 80);
@@ -237,6 +252,7 @@
                 dog.x + dog.width > canvas.width / 2 - 40 &&
                 dog.y < 100
             ) {
+                ("Level completed");
                 level++;
                 score += 100;
                 generatePlatforms();
@@ -250,6 +266,7 @@
         }
 
         function endGame() {
+            ("Game Over. Final Score:", score);
             gameRunning = false;
             backgroundMusic.pause();
             alert(`Game Over!\nScore: ${score}`);
@@ -257,6 +274,7 @@
         }
 
         function resetGame() {
+            ("Resetting game...");
             level = 1;
             score = 0;
             dog.x = 100;
@@ -264,6 +282,7 @@
             dog.velocityY = 0;
             bags.length = 0;
             generatePlatforms();
+            ("Game reset complete, starting game loop...");
             gameRunning = true;
             gameLoop();
         }
