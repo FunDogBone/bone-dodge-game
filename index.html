@@ -15,8 +15,6 @@
         canvas {
             display: block;
             margin: auto;
-            background: url('Background.png') no-repeat center center;
-            background-size: cover;
         }
         .button {
             padding: 10px 20px;
@@ -85,6 +83,31 @@
         const gameOverButtons = document.getElementById('gameOverButtons');
         const audioControls = document.getElementById('audioControls');
         const finalScoreElement = document.getElementById('finalScore');
+
+        const dogImage = new Image();
+        dogImage.src = 'Dog.png';
+
+        const skeletonImage = new Image();
+        skeletonImage.src = 'Skeleton.png';
+
+        const platformImage = new Image();
+        platformImage.src = 'island.png';
+
+        const backgroundImage = new Image();
+        backgroundImage.src = 'Background.png';
+
+        dogImage.onload = () => console.log('Dog image loaded successfully.');
+        dogImage.onerror = () => console.error('Failed to load Dog.png.');
+
+        skeletonImage.onload = () => console.log('Skeleton image loaded successfully.');
+        skeletonImage.onerror = () => console.error('Failed to load Skeleton.png.');
+
+        platformImage.onload = () => console.log('Platform image loaded successfully.');
+        platformImage.onerror = () => console.error('Failed to load island.png.');
+
+        backgroundImage.onload = () => console.log('Background image loaded successfully.');
+        backgroundImage.onerror = () => console.error('Failed to load Background.png.');
+
         let backgroundMusic = new Audio('Big Dawgs Need a Bone.mp3');
         backgroundMusic.loop = true;
         let isMuted = false;
@@ -92,7 +115,6 @@
         let level = 1;
         let score = 0;
 
-        // Game objects
         const dog = {
             x: 100,
             y: 500,
@@ -162,12 +184,13 @@
         function generatePlatforms() {
             platforms.length = 0;
             platforms.push({ x: 0, y: canvas.height - 50, width: canvas.width, height: 50 }); // Ground platform
+            platforms.push({ x: 300, y: 400, width: 150, height: 20 });
+            platforms.push({ x: 500, y: 300, width: 150, height: 20 });
         }
 
         function drawPlatforms() {
-            ctx.fillStyle = '#654321';
             platforms.forEach(platform => {
-                ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                ctx.drawImage(platformImage, platform.x, platform.y, platform.width, platform.height);
             });
         }
 
@@ -175,8 +198,20 @@
             if (!gameRunning) return;
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw background
+            ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+
+            // Draw platforms
             drawPlatforms();
 
+            // Draw dog
+            ctx.drawImage(dogImage, dog.x, dog.y, dog.width, dog.height);
+
+            // Draw skeleton
+            ctx.drawImage(skeletonImage, skeleton.x, skeleton.y, skeleton.width, skeleton.height);
+
+            // Dog movement
             if (!dog.onGround) {
                 dog.velocityY += dog.gravity;
             }
@@ -196,15 +231,8 @@
                 }
             });
 
-            ctx.fillStyle = 'blue';
-            ctx.fillRect(dog.x, dog.y, dog.width, dog.height);
-
             requestAnimationFrame(gameLoop);
         }
-
-        setTimeout(() => {
-            if (gameRunning) showGameOver();
-        }, 30000); // Simulate end of game for testing
 
         window.addEventListener('keydown', (e) => {
             if (e.code === 'ArrowLeft') dog.x -= dog.speed;
@@ -212,7 +240,9 @@
             if (e.code === 'Space' && dog.onGround) dog.velocityY = dog.jumpSpeed;
         });
 
+        generatePlatforms();
+        gameLoop();
+
     </script>
 </body>
 </html>
-
