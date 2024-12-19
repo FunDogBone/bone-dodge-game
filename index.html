@@ -56,6 +56,9 @@
         const skeletonImage = new Image();
         skeletonImage.src = "Skeleton.png";
 
+        const spaceshipImage = new Image();
+        spaceshipImage.src = "ship.png";
+
         const dogImage = new Image();
         dogImage.src = "Dog.png";
 
@@ -73,6 +76,7 @@
             y: 50,
             width: 80,
             height: 80,
+            speed: 2
         };
 
         const dog = {
@@ -85,6 +89,13 @@
             gravity: 0.5,
             velocityY: 0,
             onGround: true
+        };
+
+        const spaceship = {
+            x: skeleton.x - 40,
+            y: skeleton.y,
+            width: 160,
+            height: 80
         };
 
         const bags = [];
@@ -134,12 +145,23 @@
             });
         }
 
+        function moveSkeleton() {
+            skeleton.x += skeleton.speed;
+            spaceship.x = skeleton.x - 40;
+
+            if (skeleton.x + skeleton.width > canvas.width || skeleton.x < 0) {
+                skeleton.speed *= -1; // Reverse direction
+            }
+        }
+
         function gameLoop() {
             if (!gameRunning) return;
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Draw skeleton
+            // Move and draw skeleton and spaceship
+            moveSkeleton();
+            ctx.drawImage(spaceshipImage, spaceship.x, spaceship.y, spaceship.width, spaceship.height);
             ctx.drawImage(skeletonImage, skeleton.x, skeleton.y, skeleton.width, skeleton.height);
 
             // Draw bone at skeleton's location
@@ -168,7 +190,7 @@
             ctx.drawImage(dogImage, dog.x, dog.y, dog.width, dog.height);
 
             // Spawn bags aimed at dog
-            if (Math.random() < 0.02) {
+            if (Math.random() < 0.02 * level) {
                 bags.push(new Bag(dog.x + dog.width / 2));
             }
 
@@ -237,6 +259,8 @@
             generateRandomPlatforms();
             skeleton.x = canvas.width / 2 - skeleton.width / 2;
             skeleton.y = 50;
+            spaceship.x = skeleton.x - 40;
+            spaceship.y = skeleton.y;
         }
 
         function startGame() {
@@ -259,7 +283,7 @@
         });
 
         // Start game when images load
-        boneImage.onload = bagImage.onload = skeletonImage.onload = platformImage.onload = dogImage.onload = () => {
+        boneImage.onload = bagImage.onload = skeletonImage.onload = spaceshipImage.onload = platformImage.onload = dogImage.onload = () => {
             resetGame();
         };
     </script>
