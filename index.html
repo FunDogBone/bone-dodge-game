@@ -118,8 +118,6 @@ const DOG_SPEED = 5;
 const DOG_WIDTH = 64;
 const DOG_HEIGHT = 64;
 
-// As difficulty increases, we vary platform arrangements.
-// We keep vertical gaps within dog's jump range.
 const LEVEL_COUNT = 100; // max difficulty scale
 
 const canvas = document.getElementById('gameCanvas');
@@ -144,8 +142,9 @@ dogImage.src = 'Dog.png';
 const boneImage = document.getElementById('bone-image');
 boneImage.src = 'Bone.png';
 
+// Updated ship to PNG and larger size
 const shipImage = document.getElementById('ship-image');
-shipImage.src = 'Ship.gif';
+shipImage.src = 'Ship.png';
 
 const bagImage = document.getElementById('bag-image');
 bagImage.src = 'Bag.png';
@@ -202,7 +201,8 @@ window.addEventListener('keyup', (e) => {
 // ------ GAME VARIABLES ------
 let level = 1;
 let dog = {x: 100, y: 500, width: DOG_WIDTH, height: DOG_HEIGHT, vy:0, onGround:false};
-let ship = {x: 400, y: 50, width: 80, height: 50, vx:2};
+// Make the ship bigger
+let ship = {x: 400, y: 50, width: 120, height: 75, vx:2};
 let bone = {x: 380, y: 100, width:50, height:50};
 let bags = [];
 let platforms = [];
@@ -257,7 +257,6 @@ function generatePlatforms(level) {
   platforms = [];
 
   // Adjust bottom platforms based on level (introduce gaps at higher levels)
-  // Dog must start on a platform at the bottom
   let bottomPlatforms = [];
   if (level <= 5) {
     // One big bottom platform
@@ -288,25 +287,20 @@ function generatePlatforms(level) {
   dog.onGround = false;
   dog.vy = 0;
 
-  // Number of intermediate platforms reduces with difficulty
   let count = Math.max(5, 10 - Math.floor(level/10));
   let gap = 80 + (level * 2); 
   let platformWidth = 120 - Math.min(level * 2, 80); 
   let platformHeight = 20;
 
-  // We'll create a vertical chain of platforms from bottom upwards
-  // Start from dog's initial position
   let currentY = GAME_HEIGHT - 150;
   let currentX = dog.x;
   
-  // Function to ensure platforms remain inside game boundaries
   function clampX(x, width) {
     if (x < 0) return 0;
     if (x + width > GAME_WIDTH) return GAME_WIDTH - width;
     return x;
   }
 
-  // As difficulty increases, horizontal randomness increases
   let horizontalRange = 100 + level * 2;
   horizontalRange = Math.min(horizontalRange, 200); // cap randomness
   for (let i=0; i<count; i++) {
@@ -314,7 +308,7 @@ function generatePlatforms(level) {
     let offset = Math.floor(Math.random()* (2*horizontalRange) - horizontalRange);
     let newX = clampX(currentX + offset, platformWidth);
     platforms.push({x:newX, y:currentY, width: platformWidth, height: platformHeight});
-    currentX = newX; // update currentX for next step
+    currentX = newX; // update for next step
   }
 
   // Place bone above the top platform
@@ -374,6 +368,13 @@ function updateDog() {
   // Boundaries
   if (dog.x < 0) dog.x = 0;
   if (dog.x + dog.width > GAME_WIDTH) dog.x = GAME_WIDTH - dog.width;
+
+  // Prevent dog from going above the top boundary
+  if (dog.y < 0) {
+    dog.y = 0;
+    dog.vy = 0;
+  }
+
   if (dog.y > GAME_HEIGHT) {
     // Fell off screen = game over
     endGame();
@@ -449,7 +450,7 @@ function draw() {
     // Draw bone
     ctx.drawImage(boneImage, bone.x, bone.y, bone.width, bone.height);
 
-    // Draw ship
+    // Draw ship (now larger)
     ctx.drawImage(shipImage, ship.x, ship.y, ship.width, ship.height);
 
     // Draw bags
