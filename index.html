@@ -94,16 +94,19 @@
         let gameSpeed = 3;
 
         class Bag {
-            constructor() {
+            constructor(targetX) {
                 this.x = skeleton.x + skeleton.width / 2;
                 this.y = skeleton.y + skeleton.height;
                 this.width = 40;
                 this.height = 40;
                 this.speedY = gameSpeed;
+                this.targetX = targetX;
+                this.speedX = (this.targetX - this.x) / 50;
             }
 
             update() {
                 this.y += this.speedY;
+                this.x += this.speedX;
             }
 
             draw() {
@@ -113,9 +116,10 @@
 
         function generateRandomPlatforms() {
             platforms.length = 0;
+            platforms.push({ x: 0, y: canvas.height - 50, width: canvas.width, height: 50 }); // Foundation platform
             const platformCount = Math.min(5 + level, 10);
 
-            for (let i = 0; i < platformCount; i++) {
+            for (let i = 1; i < platformCount; i++) {
                 const width = Math.random() * 150 + 100;
                 const height = 20;
                 const x = Math.random() * (canvas.width - width);
@@ -139,7 +143,7 @@
             ctx.drawImage(skeletonImage, skeleton.x, skeleton.y, skeleton.width, skeleton.height);
 
             // Draw bone at skeleton's location
-            ctx.drawImage(boneImage, skeleton.x + skeleton.width / 2 - 20, skeleton.y + skeleton.height + 10, 40, 40);
+            ctx.drawImage(boneImage, skeleton.x + skeleton.width / 2 - 40, skeleton.y + skeleton.height + 10, 80, 80);
 
             // Draw dog
             if (!dog.onGround) {
@@ -163,9 +167,9 @@
 
             ctx.drawImage(dogImage, dog.x, dog.y, dog.width, dog.height);
 
-            // Spawn bags
+            // Spawn bags aimed at dog
             if (Math.random() < 0.02) {
-                bags.push(new Bag());
+                bags.push(new Bag(dog.x + dog.width / 2));
             }
 
             // Update bags
