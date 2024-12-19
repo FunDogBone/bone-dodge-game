@@ -5,20 +5,35 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Dog and Bone Game</title>
 <style>
-  body {
+  html, body {
     margin: 0;
+    padding: 0;
+    height: 100%;
     background: #000;
     font-family: sans-serif;
     user-select: none;
     overflow: hidden;
   }
 
-  #game-container {
-    position: relative;
-    text-align: center;
+  #outer-container {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000; /* Full screen background */
   }
 
-  /* Overlay elements for UI */
+  #game-container {
+    position: relative;
+    /* The game canvas is fixed size, centered on screen */
+    /* Add padding around it if desired, for a "framed" look */
+    padding: 20px;
+    background: #111;
+    box-sizing: border-box;
+    border: 2px solid #fff;
+  }
+
   .overlay-button {
     position: absolute;
     z-index: 10;
@@ -72,21 +87,23 @@
 </style>
 </head>
 <body>
-<div id="game-container">
-  <canvas id="gameCanvas"></canvas>
-  <img id="title-image" style="display:none;" />
-  <img id="dog-image" style="display:none;" />
-  <img id="bone-image" style="display:none;" />
-  <img id="ship-image" style="display:none;" />
-  <img id="bag-image" style="display:none;" />
-  <img id="island-image" style="display:none;" />
-  <img id="background-image" style="display:none;" />
+<div id="outer-container">
+  <div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    <img id="title-image" style="display:none;" />
+    <img id="dog-image" style="display:none;" />
+    <img id="bone-image" style="display:none;" />
+    <img id="ship-image" style="display:none;" />
+    <img id="bag-image" style="display:none;" />
+    <img id="island-image" style="display:none;" />
+    <img id="background-image" style="display:none;" />
 
-  <div id="game-over-text">GAME OVER</div>
-  <button id="start-button" class="overlay-button">Start</button>
-  <button id="mute-button" class="overlay-button">Mute</button>
-  <button id="restart-button" class="overlay-button">Restart</button>
-  <button id="send-bone-button" class="overlay-button">Send Bone</button>
+    <div id="game-over-text">GAME OVER</div>
+    <button id="start-button" class="overlay-button">Start</button>
+    <button id="mute-button" class="overlay-button">Mute</button>
+    <button id="restart-button" class="overlay-button">Restart</button>
+    <button id="send-bone-button" class="overlay-button">Send Bone</button>
+  </div>
 </div>
 
 <audio id="bg-music" loop>
@@ -101,7 +118,6 @@ const GRAVITY = 0.6;
 const JUMP_FORCE = -12;
 const DOG_SPEED = 5;
 const LEVEL_COUNT = 100; // max difficulty scale
-// Platform configuration per level could be dynamic. For simplicity, we generate a pattern.
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -196,13 +212,16 @@ let gameOver = false;
 function generatePlatforms(level) {
   // Clear current platforms
   platforms = [];
+  // Always add a bottom "floor" platform so dog doesn't fall immediately
+  platforms.push({x:0, y: GAME_HEIGHT - 50, width: GAME_WIDTH, height: 50});
+
   // As the level increases, platforms get smaller and more spread out
   let count = Math.max(5, 10 - Math.floor(level/10));
   let gap = 120 + level * 5; 
   let platformWidth = 100 - Math.min(level * 2, 80); 
   let platformHeight = 20;
   
-  let currentY = GAME_HEIGHT - 100;
+  let currentY = GAME_HEIGHT - 150;
   for (let i=0; i<count; i++){
     let x = Math.random()*(GAME_WIDTH - platformWidth);
     platforms.push({x:x, y:currentY, width: platformWidth, height: platformHeight});
@@ -243,7 +262,7 @@ function resetGame() {
 
   level = 1;
   dog.x = 100;
-  dog.y = 500;
+  dog.y = GAME_HEIGHT - 150; // start on a stable platform
   dog.vy = 0;
   dog.onGround = false;
   ship.x = 400;
@@ -257,7 +276,6 @@ function resetGame() {
 
 function difficultyAdjustments() {
   // Increase difficulty based on level
-  // Faster bag throwing, maybe homing in more aggressively
   throwInterval = Math.max(60, 120 - level);
   generatePlatforms(level);
 }
@@ -331,7 +349,6 @@ function updateShip() {
   throwTimer++;
   if (throwTimer > throwInterval) {
     throwTimer = 0;
-    // Create a bag aimed roughly at dog
     let bagSpeed = 3 + level*0.1;
     let angle = Math.atan2(dog.y - ship.y, dog.x - ship.x);
     let vx = Math.cos(angle)*bagSpeed;
@@ -344,7 +361,7 @@ function updateBags() {
   for (let b of bags) {
     b.x += b.vx;
     b.y += b.vy;
-    // Gravity to bags?
+    // Add a bit of gravity to bags
     b.vy += 0.1;
   }
   // Remove off-screen bags
@@ -361,7 +378,6 @@ function checkCollisions() {
 
   // Check if dog got the bone
   if (rectCollision(dog, bone)) {
-    // Next level
     nextLevel();
   }
 }
@@ -371,12 +387,14 @@ function draw() {
   ctx.drawImage(backgroundImage, 0,0, GAME_WIDTH, GAME_HEIGHT);
 
   if (gameState === STATE_TITLE) {
-    // Draw title
-    ctx.drawImage(titleImage, GAME_WIDTH/2 - titleImage.width/2, GAME_HEIGHT/4);
-    // Start button is handled via HTML/CSS
+    // Title screen: show title image full canvas
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0,0,GAME_WIDTH,GAME_HEIGHT);
+    let imgX = (GAME_WIDTH - titleImage.width)/2;
+    let imgY = (GAME_HEIGHT - titleImage.height)/2 - 50;
+    ctx.drawImage(titleImage, imgX, imgY);
   } else if (gameState === STATE_PLAY) {
     // Draw platforms
-    ctx.fillStyle = 'green';
     for (let p of platforms) {
       ctx.drawImage(islandImage, p.x, p.y, p.width, p.height);
     }
@@ -400,8 +418,7 @@ function draw() {
     ctx.font = '20px sans-serif';
     ctx.fillText('Level: ' + level, 20, 30);
   } else if (gameState === STATE_GAME_OVER) {
-    // Game over handled by overlay
-    // Just draw background or final frame
+    // Just draw final frame background
     ctx.drawImage(backgroundImage, 0,0, GAME_WIDTH, GAME_HEIGHT);
   }
 }
@@ -430,7 +447,7 @@ function showTitleScreen() {
   sendBoneButton.style.display = 'none';
   gameOverText.style.display = 'none';
 
-  ctx.drawImage(titleImage, GAME_WIDTH/2 - titleImage.width/2, GAME_HEIGHT/4);
+  ctx.drawImage(titleImage, (GAME_WIDTH - titleImage.width)/2, (GAME_HEIGHT - titleImage.height)/2);
 }
 
 showTitleScreen();
