@@ -172,18 +172,18 @@
             ("Spaceship position after move:", spaceship.x);
         }
 
-        function startGame() { 
-            ("Start Game function called");
-            titleScreen.classList.add('hidden');
-            canvas.classList.remove('hidden');
-            muteButton.classList.remove('hidden');
-            backgroundMusic.play();
-            ("Background music playing, restting game...");
+        function startGame() {
+    console.log("Start Game function triggered"); // Debug log
+    titleScreen.classList.add('hidden');
+    canvas.classList.remove('hidden');
+    muteButton.classList.remove('hidden');
+    backgroundMusic.play();
 
-            resetGame();
-            gameRunning = true;
-            gameLoop("Game loop starting...");
-        }
+    resetGame();
+    gameRunning = true;
+    gameLoop();
+}
+
 
         function gameLoop() {
             if (!gameRunning) {
