@@ -18,19 +18,29 @@
   #outer-container {
     width: 100%;
     height: 100vh;
+    background: #000;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    background: #000; /* Full screen background */
-    position: relative;
+    justify-content: flex-start;
+    box-sizing: border-box;
   }
 
   #game-container {
     position: relative;
-    padding: 20px;
     background: #111;
-    box-sizing: border-box;
     border: 2px solid #fff;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* The canvas will scale to fit the container */
+  #gameCanvas {
+    display: block;
+    width: 100%;
+    height: auto;
   }
 
   .overlay-button {
@@ -45,13 +55,18 @@
     text-transform: uppercase;
   }
 
-  #start-button, #mute-button, #restart-button, #send-bone-button {
+  #start-button, #mute-button, #restart-button, #send-bone-button, #fullscreen-button {
     display: none;
   }
 
   #mute-button {
     top: 10px;
     right: 10px;
+  }
+
+  #fullscreen-button {
+    top: 10px;
+    right: 90px;
   }
 
   #start-button {
@@ -84,51 +99,42 @@
     z-index: 10;
   }
 
-  /* Mobile control buttons */
-  .mobile-controls {
-    position: absolute;
-    bottom: 20px;
+  /* Controls container below the game */
+  #controls-container {
     width: 100%;
-    left: 0;
     display: flex;
-    justify-content: space-between;
-    pointer-events: none; /* so that clicking on empty area doesn't block game */
+    justify-content: center;
+    margin-top: 10px;
+    box-sizing: border-box;
+  }
+
+  .mobile-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none; 
   }
 
   .control-button {
-    pointer-events: auto; /* allow clicking/touching on these */
+    pointer-events: auto; 
     background: rgba(255,255,255,0.2);
     border: 2px solid #fff;
     color: #fff;
     font-size: 24px;
-    padding: 20px;
+    padding: 15px;
     border-radius: 10px;
-    margin: 0 10px;
+    margin: 0 5px;
     user-select: none;
-  }
-
-  .control-left-right {
-    display: flex;
-    margin-left: 20px;
-  }
-
-  .control-jump {
-    margin-right: 20px;
   }
 
   .control-button:active {
     background: rgba(255,255,255,0.4);
   }
 
-  @media (max-width: 900px) {
-    /* Scale canvas on smaller screens to fit */
-    #game-container {
-      width: 100%;
-      height: auto;
-    }
-    #gameCanvas {
-      width: 100%;
-      height: auto;
+  @media (orientation: landscape) {
+    /* In landscape mode, you can adjust styling to better fit screen */
+    .control-button {
+      padding: 10px;
     }
   }
 
@@ -149,17 +155,15 @@
     <div id="game-over-text">GAME OVER</div>
     <button id="start-button" class="overlay-button">Start</button>
     <button id="mute-button" class="overlay-button">Mute</button>
+    <button id="fullscreen-button" class="overlay-button">Full Screen</button>
     <button id="restart-button" class="overlay-button">Restart</button>
     <button id="send-bone-button" class="overlay-button">Send Bone</button>
   </div>
 
-  <!-- Mobile Control Overlays -->
-  <div class="mobile-controls">
-    <div class="control-left-right">
+  <div id="controls-container">
+    <div class="mobile-controls">
       <div id="left-control" class="control-button">←</div>
       <div id="right-control" class="control-button">→</div>
-    </div>
-    <div class="control-jump">
       <div id="jump-control" class="control-button">⤒</div>
     </div>
   </div>
@@ -175,8 +179,14 @@
 
 <script>
 // ------ CONFIGURATION ------
-const GAME_WIDTH = 800;
-const GAME_HEIGHT = 600;
+// Adjust these dimensions to match your new background size. 
+// Assuming a background of 1080x608 (width x height).
+let BASE_GAME_WIDTH = 1080;
+let BASE_GAME_HEIGHT = 608;
+
+let GAME_WIDTH = BASE_GAME_WIDTH;
+let GAME_HEIGHT = BASE_GAME_HEIGHT;
+
 const GRAVITY = 0.6;
 const JUMP_FORCE = -12;
 const DOG_SPEED = 5;
@@ -187,8 +197,32 @@ const LEVEL_COUNT = 100; // max difficulty scale
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+
+// Initially set the canvas to the base size
 canvas.width = GAME_WIDTH;
 canvas.height = GAME_HEIGHT;
+
+// Resizing function to keep the aspect ratio and fit the container
+function resizeCanvas() {
+  const gameContainer = document.getElementById('game-container');
+  // Maintain aspect ratio
+  const containerWidth = gameContainer.clientWidth;
+  const containerHeight = gameContainer.clientHeight;
+  const aspect = BASE_GAME_WIDTH / BASE_GAME_HEIGHT;
+
+  let newWidth = containerWidth;
+  let newHeight = Math.round(newWidth / aspect);
+
+  if (newHeight > containerHeight) {
+    newHeight = containerHeight;
+    newWidth = Math.round(newHeight * aspect);
+  }
+
+  canvas.width = BASE_GAME_WIDTH;
+  canvas.height = BASE_GAME_HEIGHT;
+  canvas.style.width = newWidth + 'px';
+  canvas.style.height = newHeight + 'px';
+}
 
 // ------ GAME STATES ------
 const STATE_TITLE = 0;
@@ -229,6 +263,7 @@ const startButton = document.getElementById('start-button');
 const muteButton = document.getElementById('mute-button');
 const restartButton = document.getElementById('restart-button');
 const sendBoneButton = document.getElementById('send-bone-button');
+const fullscreenButton = document.getElementById('fullscreen-button');
 const gameOverText = document.getElementById('game-over-text');
 
 startButton.addEventListener('click', () => {
@@ -254,6 +289,17 @@ sendBoneButton.addEventListener('click', () => {
   window.open('https://www.snek.fun/token/9153c43be41fc6f057524f98755c947494e59422a584409cf358a3ac.426f6e65','_blank');
 });
 
+fullscreenButton.addEventListener('click', () => {
+  const outerContainer = document.getElementById('outer-container');
+  if (!document.fullscreenElement) {
+    outerContainer.requestFullscreen().catch(err => {
+      console.log(`Error attempting fullscreen: ${err.message}`);
+    });
+  } else {
+    document.exitFullscreen();
+  }
+});
+
 // ------ INPUT HANDLING ------
 let keys = {};
 window.addEventListener('keydown', (e) => {
@@ -277,7 +323,6 @@ function touchStartHandler(directionKey) {
     } else if (directionKey === 'right') {
       keys['ArrowRight'] = true;
     } else if (directionKey === 'jump') {
-      // Simulate jump key
       keys['Space'] = true;
     }
   }
@@ -324,8 +369,9 @@ let gameOver = false;
 function startGame() {
   // Hide title screen elements
   startButton.style.display = 'none';
-  // Show mute button in game
+  // Show mute and fullscreen buttons
   muteButton.style.display = 'block';
+  fullscreenButton.style.display = 'block';
 
   bgMusic.currentTime = 0;
   if(!musicMuted) bgMusic.play();
@@ -595,14 +641,21 @@ function animate() {
 function showTitleScreen() {
   startButton.style.display = 'block';
   muteButton.style.display = 'none';
+  fullscreenButton.style.display = 'none';
   restartButton.style.display = 'none';
   sendBoneButton.style.display = 'none';
   gameOverText.style.display = 'none';
-
-  ctx.drawImage(titleImage, (GAME_WIDTH - titleImage.width)/2, (GAME_HEIGHT - titleImage.height)/2);
+  draw();
 }
 
-showTitleScreen();
+// Handle resizing the canvas on window resize
+window.addEventListener('resize', resizeCanvas);
+
+// Wait for images to load before showing title screen
+backgroundImage.onload = () => {
+  showTitleScreen();
+  resizeCanvas();
+};
 </script>
 </body>
 </html>
