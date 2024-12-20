@@ -41,6 +41,10 @@
 
   #gameCanvas {
     display: block;
+    /* We won't rely on CSS scaling for the game world,
+       We'll do it in JS with transform() */
+    width: 100%;
+    height: 100%;
   }
 
   .overlay-button {
@@ -196,30 +200,26 @@ const MAX_LEVEL = 25;
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// We'll compute scaling every frame in draw:
 let scale = 1;
 let offsetX = 0;
 let offsetY = 0;
 
-function resizeCanvas() {
+function updateScaleAndOffsets() {
   const gameContainer = document.getElementById('game-container');
   let containerWidth = gameContainer.clientWidth;
   let containerHeight = gameContainer.clientHeight;
-  
-  // Set canvas resolution to match container size (for best quality)
-  canvas.width = containerWidth * window.devicePixelRatio;
-  canvas.height = containerHeight * window.devicePixelRatio;
 
-  // Compute scale to maintain aspect ratio of BASE_GAME_WIDTH x BASE_GAME_HEIGHT
-  let scaleX = (canvas.width / window.devicePixelRatio) / BASE_GAME_WIDTH;
-  let scaleY = (canvas.height / window.devicePixelRatio) / BASE_GAME_HEIGHT;
-  scale = Math.min(scaleX, scaleY);
-
-  // Compute offset to center the game if aspect ratios differ
+  // Ensure entire 700x400 area fits
+  scale = Math.min(containerWidth / BASE_GAME_WIDTH, containerHeight / BASE_GAME_HEIGHT);
+  // Compute offsets to center
   let totalWidth = BASE_GAME_WIDTH * scale;
   let totalHeight = BASE_GAME_HEIGHT * scale;
-  offsetX = ((canvas.width / window.devicePixelRatio) - totalWidth) / 2;
-  offsetY = ((canvas.height / window.devicePixelRatio) - totalHeight) / 2;
+  offsetX = (containerWidth - totalWidth) / 2;
+  offsetY = (containerHeight - totalHeight) / 2;
+
+  // Resize canvas to match container size for crisp rendering
+  canvas.width = containerWidth;
+  canvas.height = containerHeight;
 }
 
 // ------ GAME STATES ------
@@ -260,14 +260,12 @@ background2Image.src = 'Background2.png';
 backgroundImage.onerror = () => {
   console.error("Failed to load Background.png");
   showTitleScreen();
-  resizeCanvas();
 };
 
 background2Image.onerror = () => {
   console.error("Failed to load Background2.png");
 };
 
-// Current background based on level
 function getCurrentBackground() {
   let cycle = Math.floor((level-1)/5) % 2; 
   return cycle === 0 ? backgroundImage : background2Image;
@@ -588,8 +586,13 @@ function rectCollision(a,b) {
 }
 
 function draw() {
-  resizeCanvas();
-  ctx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+  updateScaleAndOffsets();
+  
+  // Clear entire canvas
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  ctx.save();
+  // Apply scaling and centering transform
   ctx.translate(offsetX, offsetY);
   ctx.scale(scale, scale);
 
@@ -626,6 +629,8 @@ function draw() {
   } else if (gameState === STATE_GAME_OVER) {
     ctx.drawImage(bg, 0,0, GAME_WIDTH, GAME_HEIGHT);
   }
+
+  ctx.restore();
 }
 
 function animate() {
@@ -636,7 +641,6 @@ function animate() {
     checkCollisions();
   }
 
-  ctx.clearRect(0,0,canvas.width,canvas.height);
   draw();
 
   if (!gameOver) {
@@ -655,7 +659,6 @@ function showTitleScreen() {
 }
 
 window.addEventListener('load', () => {
-  resizeCanvas();
   showTitleScreen();
 });
 
@@ -668,6 +671,7 @@ window.addEventListener('resize', ()=> {
 </script>
 </body>
 </html>
+
 
 
 
