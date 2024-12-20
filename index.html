@@ -22,7 +22,8 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-start;
+    /* Changed to center vertically */
+    justify-content: center;
     box-sizing: border-box;
   }
 
@@ -36,7 +37,6 @@
     justify-content: center;
   }
 
-  /* The canvas will scale to fit the container */
   #gameCanvas {
     display: block;
     width: 100%;
@@ -99,7 +99,6 @@
     z-index: 10;
   }
 
-  /* Controls container below the game */
   #controls-container {
     width: 100%;
     display: flex;
@@ -112,11 +111,11 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    pointer-events: none; 
+    pointer-events: none;
   }
 
   .control-button {
-    pointer-events: auto; 
+    pointer-events: auto;
     background: rgba(255,255,255,0.2);
     border: 2px solid #fff;
     color: #fff;
@@ -132,7 +131,6 @@
   }
 
   @media (orientation: landscape) {
-    /* In landscape mode, you can adjust styling to better fit screen */
     .control-button {
       padding: 10px;
     }
@@ -179,8 +177,6 @@
 
 <script>
 // ------ CONFIGURATION ------
-// Adjust these dimensions to match your new background size. 
-// Assuming a background of 1080x608 (width x height).
 let BASE_GAME_WIDTH = 1080;
 let BASE_GAME_HEIGHT = 608;
 
@@ -205,7 +201,6 @@ canvas.height = GAME_HEIGHT;
 // Resizing function to keep the aspect ratio and fit the container
 function resizeCanvas() {
   const gameContainer = document.getElementById('game-container');
-  // Maintain aspect ratio
   const containerWidth = gameContainer.clientWidth;
   const containerHeight = gameContainer.clientHeight;
   const aspect = BASE_GAME_WIDTH / BASE_GAME_HEIGHT;
@@ -252,6 +247,13 @@ islandImage.src = 'island.png';
 
 const backgroundImage = document.getElementById('background-image');
 backgroundImage.src = 'Background.png';
+
+// Fallback if the background fails to load
+backgroundImage.onerror = () => {
+  console.error("Failed to load background image. Check asset paths.");
+  showTitleScreen();
+  resizeCanvas();
+};
 
 // ------ AUDIO ------
 const bgMusic = document.getElementById('bg-music');
@@ -314,7 +316,6 @@ const leftControl = document.getElementById('left-control');
 const rightControl = document.getElementById('right-control');
 const jumpControl = document.getElementById('jump-control');
 
-// Helper functions for touch
 function touchStartHandler(directionKey) {
   return (e) => {
     e.preventDefault();
@@ -341,7 +342,6 @@ function touchEndHandler(directionKey) {
   }
 }
 
-// Add touch listeners
 leftControl.addEventListener('touchstart', touchStartHandler('left'), {passive:false});
 leftControl.addEventListener('touchend', touchEndHandler('left'), {passive:false});
 leftControl.addEventListener('touchcancel', touchEndHandler('left'), {passive:false});
@@ -412,20 +412,16 @@ function difficultyAdjustments() {
 function generatePlatforms(level) {
   platforms = [];
 
-  // Adjust bottom platforms based on level (introduce gaps)
   let bottomPlatforms = [];
   if (level <= 5) {
-    // One big bottom platform
     bottomPlatforms.push({x:0, y:GAME_HEIGHT - 50, width: GAME_WIDTH, height: 50});
     dog.x = 100;
   } else if (level <= 10) {
-    // Two bottom platforms: a gap in the middle
     let halfWidth = (GAME_WIDTH - 100) / 2; 
     bottomPlatforms.push({x:0, y: GAME_HEIGHT - 50, width: halfWidth, height:50});
     bottomPlatforms.push({x:halfWidth+100, y: GAME_HEIGHT - 50, width: halfWidth, height:50});
     dog.x = 50;
   } else {
-    // Three bottom platforms: two gaps
     let segmentWidth = (GAME_WIDTH - 200) / 3; 
     bottomPlatforms.push({x:0, y: GAME_HEIGHT - 50, width: segmentWidth, height:50});
     bottomPlatforms.push({x:segmentWidth+100, y: GAME_HEIGHT - 50, width: segmentWidth, height:50});
@@ -446,21 +442,18 @@ function generatePlatforms(level) {
   let platformWidth = 120 - Math.min(level * 2, 80); 
   let platformHeight = 20;
 
-  // Margin to keep platforms away from extreme edges
   let margin = 100;
   let xMin = margin;
   let xMax = GAME_WIDTH - platformWidth - margin;
 
   let currentY = GAME_HEIGHT - 150;
 
-  // Even distribution: each platform independently placed within [xMin, xMax]
   for (let i=0; i<count; i++) {
     currentY -= gap;
     let newX = Math.floor(Math.random() * (xMax - xMin)) + xMin;
     platforms.push({x:newX, y:currentY, width: platformWidth, height: platformHeight});
   }
 
-  // Place bone above the top platform
   bone.y = Math.max(100, currentY - 60);
   bone.x = GAME_WIDTH/2 - bone.width/2; 
 }
@@ -485,7 +478,6 @@ function endGame() {
 }
 
 function updateDog() {
-  // Horizontal movement
   if (keys['ArrowLeft']) {
     dog.x -= DOG_SPEED;
   }
@@ -493,17 +485,14 @@ function updateDog() {
     dog.x += DOG_SPEED;
   }
 
-  // Jump
   if ((keys['ArrowUp'] || keys['Space'] || keys['KeyW']) && dog.onGround) {
     dog.vy = JUMP_FORCE;
     dog.onGround = false;
   }
 
-  // Gravity
   dog.vy += GRAVITY;
   dog.y += dog.vy;
 
-  // Collide with platforms
   dog.onGround = false;
   for (let p of platforms) {
     if (rectCollision(dog, p)) {
@@ -513,18 +502,15 @@ function updateDog() {
     }
   }
 
-  // Boundaries
   if (dog.x < 0) dog.x = 0;
   if (dog.x + dog.width > GAME_WIDTH) dog.x = GAME_WIDTH - dog.width;
 
-  // Prevent dog from going above the top boundary
   if (dog.y < 0) {
     dog.y = 0;
     dog.vy = 0;
   }
 
   if (dog.y > GAME_HEIGHT) {
-    // Fell off screen = game over
     endGame();
   }
 }
@@ -535,7 +521,6 @@ function updateShip() {
     ship.vx *= -1;
   }
 
-  // Throw bags
   throwTimer++;
   if (throwTimer > throwInterval) {
     throwTimer = 0;
@@ -551,22 +536,19 @@ function updateBags() {
   for (let b of bags) {
     b.x += b.vx;
     b.y += b.vy;
-    b.vy += 0.1; // slight gravity to bags
+    b.vy += 0.1; 
   }
   bags = bags.filter(b => b.y < GAME_HEIGHT+100 && b.x > -100 && b.x < GAME_WIDTH+100);
 }
 
 function checkCollisions() {
-  // Check bag-dog collision
   for (let b of bags) {
     if (rectCollision(dog,b)) {
       endGame();
     }
   }
 
-  // Check if dog got the bone
   if (rectCollision(dog, bone)) {
-    // Play coin sound before moving to next level
     coinSound.currentTime = 0;
     coinSound.play();
     nextLevel();
@@ -581,42 +563,32 @@ function rectCollision(a,b) {
 }
 
 function draw() {
-  // Background
   ctx.drawImage(backgroundImage, 0,0, GAME_WIDTH, GAME_HEIGHT);
 
   if (gameState === STATE_TITLE) {
-    // Title screen: show title image centered
     ctx.fillStyle = '#000';
     ctx.fillRect(0,0,GAME_WIDTH,GAME_HEIGHT);
     let imgX = (GAME_WIDTH - titleImage.width)/2;
     let imgY = (GAME_HEIGHT - titleImage.height)/2 - 50;
     ctx.drawImage(titleImage, imgX, imgY);
   } else if (gameState === STATE_PLAY) {
-    // Draw platforms
     for (let p of platforms) {
       ctx.drawImage(islandImage, p.x, p.y, p.width, p.height);
     }
 
-    // Draw bone
     ctx.drawImage(boneImage, bone.x, bone.y, bone.width, bone.height);
-
-    // Draw ship
     ctx.drawImage(shipImage, ship.x, ship.y, ship.width, ship.height);
 
-    // Draw bags
     for (let b of bags) {
       ctx.drawImage(bagImage, b.x, b.y, b.width, b.height);
     }
 
-    // Draw dog
     ctx.drawImage(dogImage, dog.x, dog.y, dog.width, dog.height);
 
-    // HUD: Display Level
     ctx.fillStyle = '#fff';
     ctx.font = '20px sans-serif';
     ctx.fillText('Level: ' + level, 20, 30);
   } else if (gameState === STATE_GAME_OVER) {
-    // Draw final background frame
     ctx.drawImage(backgroundImage, 0,0, GAME_WIDTH, GAME_HEIGHT);
   }
 }
@@ -637,7 +609,6 @@ function animate() {
   }
 }
 
-// Initial display setup for title screen
 function showTitleScreen() {
   startButton.style.display = 'block';
   muteButton.style.display = 'none';
@@ -648,10 +619,8 @@ function showTitleScreen() {
   draw();
 }
 
-// Handle resizing the canvas on window resize
 window.addEventListener('resize', resizeCanvas);
 
-// Wait for images to load before showing title screen
 backgroundImage.onload = () => {
   showTitleScreen();
   resizeCanvas();
