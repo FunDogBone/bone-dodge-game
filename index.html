@@ -423,10 +423,11 @@ function resetGame() {
 function generatePlatforms(level) {
   platforms = [];
 
+  // Bottom platform (start.png)
   let bottomPlatformHeight = 50; 
   let bottomPlatforms = [];
   if (level <= 5) {
-    bottomPlatforms.push({x:0, y:GAME_HEIGHT - bottomPlatformHeight, width: GAME_WIDTH, height: bottomPlatformHeight, start:true});
+    bottomPlatforms.push({x:0, y: GAME_HEIGHT - bottomPlatformHeight, width: GAME_WIDTH, height: bottomPlatformHeight, start:true});
     dog.x = 100;
   } else if (level <= 10) {
     let halfWidth = (GAME_WIDTH - 100) / 2; 
@@ -449,31 +450,63 @@ function generatePlatforms(level) {
   dog.onGround = false;
   dog.vy = 0;
 
-  let count = Math.max(5, 10 - Math.floor(level/10));
-  let gap = 80 + (level * 2); 
-  let platformWidth = 120 - Math.min(level * 2, 80); 
-  let platformHeight = 20;
-
-  let margin = 100;
-  let xMin = margin;
-  let xMax = GAME_WIDTH - platformWidth - margin;
-
-  let currentY = GAME_HEIGHT - 150;
-
-  for (let i=0; i<count; i++) {
-    currentY -= gap;
-    let newX = Math.floor(Math.random() * (xMax - xMin)) + xMin;
-    platforms.push({x:newX, y:currentY, width: platformWidth, height: platformHeight, start:false});
-  }
-
-  // Randomize Bone position higher and by level
+  // Randomize the bone position now
   let boneXMin = 50;
   let boneXMax = GAME_WIDTH - bone.width - 50;
   bone.x = Math.floor(Math.random() * (boneXMax - boneXMin)) + boneXMin;
-
-  // Place bone higher with each level
-  bone.y = currentY - (60 + level * 5);
+  let topPlatformArea = GAME_HEIGHT - 150; // starting above bottom platform area
+  bone.y = topPlatformArea - (60 + level * 5);
   if (bone.y < 50) bone.y = 50; // ensure not off top
+
+  // Now distribute island platforms between bottomPlatformArea and just below bone
+  // Adjust platform count and size by difficulty
+  let platformCount;
+  let minWidth, maxWidth;
+
+  if (level <= 10) {
+    // easier: more platforms
+    platformCount = Math.floor(Math.random() * 4) + 5; // 5-8
+    minWidth = 80;
+    maxWidth = 120;
+  } else if (level <= 20) {
+    // medium difficulty: moderate number
+    platformCount = Math.floor(Math.random() * 4) + 3; // 3-6
+    minWidth = 100;
+    maxWidth = 150;
+  } else {
+    // hardest levels: fewer platforms
+    platformCount = Math.floor(Math.random() * 2) + 3; // 3-4
+    minWidth = 120;
+    maxWidth = 180;
+  }
+
+  let verticalSpaceTop = bone.y - 60; 
+  if (verticalSpaceTop < 100) verticalSpaceTop = 100; // just a safety
+
+  // We'll place platformCount platforms randomly between topPlatformArea and verticalSpaceTop
+  // Actually, bone is above topPlatformArea, so we must ensure verticalSpaceTop < topPlatformArea.
+  // If bone ended up not far above, adjust:
+  if (verticalSpaceTop > topPlatformArea) verticalSpaceTop = topPlatformArea - 50;
+
+  let verticalRangeStart = verticalSpaceTop;
+  let verticalRangeEnd = topPlatformArea;
+
+  if (verticalRangeEnd <= verticalRangeStart) {
+    // If bone is too close to topPlatformArea, just place them between bottom and bone
+    verticalRangeStart = bone.y + 20;
+    verticalRangeEnd = GAME_HEIGHT - 150;
+  }
+
+  for (let i = 0; i < platformCount; i++) {
+    let pw = Math.floor(Math.random()*(maxWidth - minWidth)) + minWidth;
+    let ph = 20; 
+    let py = Math.floor(Math.random()*(verticalRangeEnd - verticalRangeStart)) + verticalRangeStart;
+    let pxMargin = 50;
+    let pxMax = GAME_WIDTH - pw - pxMargin;
+    let px = Math.floor(Math.random()*pxMax) + pxMargin;
+
+    platforms.push({x:px, y:py, width:pw, height:ph, start:false});
+  }
 }
 
 function throwBags() {
