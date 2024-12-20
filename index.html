@@ -160,7 +160,6 @@
     <button id="mute-button" class="overlay-button">Mute</button>
     <button id="fullscreen-button" class="overlay-button">Full Screen</button>
     <button id="restart-button" class="overlay-button">Restart</button>
-    <!-- Change the text and add emojis -->
     <button id="send-bone-button" class="overlay-button">Bone the Chart 🚀 🦴</button>
   </div>
 
@@ -194,20 +193,16 @@ const JUMP_FORCE = -12;
 const DOG_SPEED = 5;
 const DOG_WIDTH = 64;
 const DOG_HEIGHT = 64;
-const MAX_LEVEL = 25; // We'll consider difficulty up to level 25
-const LEVEL_COUNT = 100; // if needed beyond 25
+const MAX_LEVEL = 25;
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// We'll not enforce any ratio, just fill the container:
 function resizeCanvas() {
   const gameContainer = document.getElementById('game-container');
-  // Fill entire container
   let containerWidth = gameContainer.clientWidth;
   let containerHeight = gameContainer.clientHeight;
 
-  // Just scale canvas to container size (this may distort aspect ratio)
   canvas.width = BASE_GAME_WIDTH;
   canvas.height = BASE_GAME_HEIGHT;
   canvas.style.width = containerWidth + 'px';
@@ -237,7 +232,6 @@ shipImage.src = 'Ship.png';
 const bagImage = document.getElementById('bag-image');
 bagImage.src = 'Bag.png';
 
-// start.png for the initial platform
 const startImage = document.getElementById('start-image');
 startImage.src = 'start.png';
 
@@ -250,19 +244,21 @@ backgroundImage.src = 'Background.png';
 const background2Image = document.getElementById('background2-image');
 background2Image.src = 'Background2.png';
 
-// We'll choose which background to use based on level
-function getCurrentBackground() {
-  // Every 5 levels switch background
-  let cycle = Math.floor((level-1)/5) % 2; 
-  return cycle === 0 ? backgroundImage : background2Image;
-}
-
-// Fallback if the background fails to load
 backgroundImage.onerror = () => {
-  console.error("Failed to load background image. Check asset paths.");
+  console.error("Failed to load Background.png");
   showTitleScreen();
   resizeCanvas();
 };
+
+background2Image.onerror = () => {
+  console.error("Failed to load Background2.png");
+  // Not critical to show title screen again, as we rely on backgroundImage primarily.
+};
+
+function getCurrentBackground() {
+  let cycle = Math.floor((level-1)/5) % 2; 
+  return cycle === 0 ? backgroundImage : background2Image;
+}
 
 // ------ AUDIO ------
 const bgMusic = document.getElementById('bg-music');
@@ -320,7 +316,7 @@ window.addEventListener('keyup', (e) => {
   keys[e.code] = false;
 });
 
-// Mobile and Desktop controls using the on-screen buttons
+// Controls
 const leftControl = document.getElementById('left-control');
 const rightControl = document.getElementById('right-control');
 const jumpControl = document.getElementById('jump-control');
@@ -345,7 +341,7 @@ function controlEnd(directionKey) {
   }
 }
 
-// Touch events for mobile
+// Touch events
 leftControl.addEventListener('touchstart', (e)=>{e.preventDefault();controlStart('left');}, {passive:false});
 leftControl.addEventListener('touchend', (e)=>{e.preventDefault();controlEnd('left');}, {passive:false});
 rightControl.addEventListener('touchstart', (e)=>{e.preventDefault();controlStart('right');}, {passive:false});
@@ -353,7 +349,7 @@ rightControl.addEventListener('touchend', (e)=>{e.preventDefault();controlEnd('r
 jumpControl.addEventListener('touchstart', (e)=>{e.preventDefault();controlStart('jump');}, {passive:false});
 jumpControl.addEventListener('touchend', (e)=>{e.preventDefault();controlEnd('jump');}, {passive:false});
 
-// Mouse events for desktop on-screen buttons
+// Mouse events for on-screen buttons
 leftControl.addEventListener('mousedown', ()=> controlStart('left'));
 leftControl.addEventListener('mouseup', ()=> controlEnd('left'));
 rightControl.addEventListener('mousedown', ()=> controlStart('right'));
@@ -373,16 +369,8 @@ let throwTimer = 0;
 let throwInterval = 120;
 let gameOver = false;
 
-// Difficulty scaling function
 function difficultyAdjustments() {
-  // Increase difficulty based on level:
-  // Faster throwing intervals
   throwInterval = Math.max(60, 120 - level);
-
-  // Increase bag speed and number of bags at higher levels
-  // For simplicity, let's linearly scale speed and count
-  // At level 25, maybe double speed and throw 2 bags at once
-  // store them in global variables or compute on the fly
 }
 
 function startGame() {
@@ -426,21 +414,16 @@ function resetGame() {
 function generatePlatforms(level) {
   platforms = [];
 
-  // The bottom platform where the dog starts is now start.png
-  // We'll still introduce gaps at higher levels, as before.
   let bottomPlatforms = [];
   if (level <= 5) {
-    // One big bottom platform (start.png)
     bottomPlatforms.push({x:0, y:GAME_HEIGHT - 50, width: GAME_WIDTH, height: 50, start:true});
     dog.x = 100;
   } else if (level <= 10) {
-    // Two bottom platforms: a gap
     let halfWidth = (GAME_WIDTH - 100) / 2; 
     bottomPlatforms.push({x:0, y: GAME_HEIGHT - 50, width: halfWidth, height:50, start:true});
     bottomPlatforms.push({x:halfWidth+100, y: GAME_HEIGHT - 50, width: halfWidth, height:50});
     dog.x = 50;
   } else {
-    // Three bottom platforms: two gaps
     let segmentWidth = (GAME_WIDTH - 200) / 3; 
     bottomPlatforms.push({x:0, y: GAME_HEIGHT - 50, width: segmentWidth, height:50, start:true});
     bottomPlatforms.push({x:segmentWidth+100, y: GAME_HEIGHT - 50, width: segmentWidth, height:50});
@@ -477,22 +460,15 @@ function generatePlatforms(level) {
   bone.x = GAME_WIDTH/2 - bone.width/2; 
 }
 
-// Modify the bag throwing logic to scale difficulty up to level 25:
-// More speed and multiple bags per throw
 function throwBags() {
-  // bagSpeed base
   let baseBagSpeed = 3;
-  // By level 25, let's increase speed by +2
-  let additionalSpeed = (level/25)*2; // scales 0 to 2 as level goes to 25
+  let additionalSpeed = (level/25)*2;
   let bagSpeed = baseBagSpeed + additionalSpeed;
-
-  // Number of bags at once: start with 1, by level 25 maybe 3
   let bagCount = 1 + Math.floor((level/25)*2);
 
   for (let i=0; i<bagCount; i++) {
     let angle = Math.atan2(dog.y - ship.y, dog.x - ship.x);
-    // Slight variation in angle for multiple bags
-    angle += (i - (bagCount-1)/2) * 0.1; // spread them slightly if multiple
+    angle += (i - (bagCount-1)/2) * 0.1; 
     let vx = Math.cos(angle)*bagSpeed;
     let vy = Math.sin(angle)*bagSpeed;
     bags.push({x:ship.x+ship.width/2, y:ship.y+ship.height, width:30, height:30, vx:vx, vy:vy});
@@ -501,7 +477,7 @@ function throwBags() {
 
 function nextLevel() {
   level++;
-  if (level > MAX_LEVEL) level = MAX_LEVEL; // cap level if needed
+  if (level > MAX_LEVEL) level = MAX_LEVEL; 
   dog.x = 100;
   dog.y = GAME_HEIGHT - 150;
   dog.vy = 0;
@@ -558,7 +534,6 @@ function updateDog() {
   }
 }
 
-let throwTimer = 0;
 function updateShip() {
   ship.x += ship.vx;
   if (ship.x < 0 || ship.x + ship.width > GAME_WIDTH) {
@@ -664,15 +639,19 @@ function showTitleScreen() {
   draw();
 }
 
-window.addEventListener('resize', resizeCanvas);
+// Ensure we show something even if images fail or take too long
+window.addEventListener('load', () => {
+  resizeCanvas();
+  showTitleScreen();
+});
 
+// If background loads successfully, show the title screen
 backgroundImage.onload = () => {
   showTitleScreen();
   resizeCanvas();
 };
-background2Image.onload = () => {
-  // Just ensure it's cached
-};
+
+window.addEventListener('resize', resizeCanvas);
 </script>
 </body>
 </html>
