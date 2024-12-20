@@ -108,7 +108,6 @@
   <source src="Big%20Dawgs%20Need%20a%20Bone.mp3" type="audio/mpeg">
 </audio>
 
-<!-- Added coin sound effect -->
 <audio id="coin-sound">
   <source src="coin.mp3" type="audio/mpeg">
 </audio>
@@ -294,23 +293,18 @@ function generatePlatforms(level) {
   let platformWidth = 120 - Math.min(level * 2, 80); 
   let platformHeight = 20;
 
-  let currentY = GAME_HEIGHT - 150;
-  let currentX = dog.x;
-  
-  function clampX(x, width) {
-    if (x < 0) return 0;
-    if (x + width > GAME_WIDTH) return GAME_WIDTH - width;
-    return x;
-  }
+  // Margin to keep platforms away from extreme edges
+  let margin = 100;
+  let xMin = margin;
+  let xMax = GAME_WIDTH - platformWidth - margin;
 
-  let horizontalRange = 100 + level * 2;
-  horizontalRange = Math.min(horizontalRange, 200); // cap randomness
+  let currentY = GAME_HEIGHT - 150;
+
+  // Even distribution: each platform independently placed within [xMin, xMax]
   for (let i=0; i<count; i++) {
     currentY -= gap;
-    let offset = Math.floor(Math.random()* (2*horizontalRange) - horizontalRange);
-    let newX = clampX(currentX + offset, platformWidth);
+    let newX = Math.floor(Math.random() * (xMax - xMin)) + xMin;
     platforms.push({x:newX, y:currentY, width: platformWidth, height: platformHeight});
-    currentX = newX; // update for next step
   }
 
   // Place bone above the top platform
