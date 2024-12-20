@@ -22,7 +22,6 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    /* Changed to center vertically */
     justify-content: center;
     box-sizing: border-box;
   }
@@ -177,8 +176,9 @@
 
 <script>
 // ------ CONFIGURATION ------
-let BASE_GAME_WIDTH = 1080;
-let BASE_GAME_HEIGHT = 608;
+// 7:4 aspect ratio = 700 (width) : 400 (height)
+let BASE_GAME_WIDTH = 700;
+let BASE_GAME_HEIGHT = 400;
 
 let GAME_WIDTH = BASE_GAME_WIDTH;
 let GAME_HEIGHT = BASE_GAME_HEIGHT;
@@ -198,12 +198,12 @@ const ctx = canvas.getContext('2d');
 canvas.width = GAME_WIDTH;
 canvas.height = GAME_HEIGHT;
 
-// Resizing function to keep the aspect ratio and fit the container
+// Resizing function to keep the aspect ratio and fit the container at 7:4
 function resizeCanvas() {
   const gameContainer = document.getElementById('game-container');
   const containerWidth = gameContainer.clientWidth;
   const containerHeight = gameContainer.clientHeight;
-  const aspect = BASE_GAME_WIDTH / BASE_GAME_HEIGHT;
+  const aspect = BASE_GAME_WIDTH / BASE_GAME_HEIGHT; // 7/4 = 1.75
 
   let newWidth = containerWidth;
   let newHeight = Math.round(newWidth / aspect);
@@ -213,6 +213,7 @@ function resizeCanvas() {
     newWidth = Math.round(newHeight * aspect);
   }
 
+  // Maintain internal game resolution
   canvas.width = BASE_GAME_WIDTH;
   canvas.height = BASE_GAME_HEIGHT;
   canvas.style.width = newWidth + 'px';
@@ -356,20 +357,18 @@ jumpControl.addEventListener('touchcancel', touchEndHandler('jump'), {passive:fa
 
 // ------ GAME VARIABLES ------
 let level = 1;
-let dog = {x: 100, y: 500, width: DOG_WIDTH, height: DOG_HEIGHT, vy:0, onGround:false};
+let dog = {x: 100, y: 300, width: DOG_WIDTH, height: DOG_HEIGHT, vy:0, onGround:false};
 let ship = {x: 400, y: 50, width: 120, height: 75, vx:2};
 let bone = {x: 380, y: 100, width:50, height:50};
 let bags = [];
 let platforms = [];
 
 let throwTimer = 0;
-let throwInterval = 120; // decreases with level to increase difficulty
+let throwInterval = 120;
 let gameOver = false;
 
 function startGame() {
-  // Hide title screen elements
   startButton.style.display = 'none';
-  // Show mute and fullscreen buttons
   muteButton.style.display = 'block';
   fullscreenButton.style.display = 'block';
 
@@ -387,8 +386,8 @@ function resetGame() {
   sendBoneButton.style.display = 'none';
 
   level = 1;
-  dog.width = DOG_WIDTH;
-  dog.height = DOG_HEIGHT;
+  dog.x = 100;
+  dog.y = 300;
   dog.vy = 0;
   dog.onGround = false;
   ship.x = 400;
@@ -396,7 +395,7 @@ function resetGame() {
   ship.vx = 2;
   bags = [];
   
-  bgMusic.currentTime = 0; // Restart music from beginning on new game
+  bgMusic.currentTime = 0;
   if(!musicMuted) bgMusic.play();
   
   difficultyAdjustments();
@@ -404,7 +403,6 @@ function resetGame() {
 }
 
 function difficultyAdjustments() {
-  // Increase difficulty based on level
   throwInterval = Math.max(60, 120 - level);
   generatePlatforms(level);
 }
