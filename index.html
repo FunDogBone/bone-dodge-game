@@ -122,8 +122,6 @@ const DOG_SPEED = 5;
 const DOG_WIDTH = 64;
 const DOG_HEIGHT = 64;
 
-const LEVEL_COUNT = 100; // max difficulty scale
-
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 canvas.width = GAME_WIDTH;
@@ -217,7 +215,6 @@ let gameOver = false;
 function startGame() {
   // Hide title screen elements
   startButton.style.display = 'none';
-  // Show mute button in game
   muteButton.style.display = 'block';
 
   bgMusic.currentTime = 0;
@@ -251,7 +248,6 @@ function resetGame() {
 }
 
 function difficultyAdjustments() {
-  // Increase difficulty based on level
   throwInterval = Math.max(60, 120 - level);
   generatePlatforms(level);
 }
@@ -259,7 +255,7 @@ function difficultyAdjustments() {
 function generatePlatforms(level) {
   platforms = [];
 
-  // Adjust bottom platforms based on level (introduce gaps)
+  // Bottom platforms
   let bottomPlatforms = [];
   if (level <= 5) {
     // One big bottom platform
@@ -288,28 +284,44 @@ function generatePlatforms(level) {
   dog.onGround = false;
   dog.vy = 0;
 
+  // Create a triangular structure of platforms above the bottom platforms.
+  // The number of rows will be 'count'.
+  // Each row from bottom to top has one fewer platform, forming a pyramid.
   let count = Math.max(5, 10 - Math.floor(level/10));
   let gap = 80 + (level * 2); 
   let platformWidth = 120 - Math.min(level * 2, 80); 
   let platformHeight = 20;
 
-  // Margin to keep platforms away from extreme edges
-  let margin = 100;
-  let xMin = margin;
-  let xMax = GAME_WIDTH - platformWidth - margin;
-
+  // We'll form a pyramid: bottom row has 'count' platforms, above that (count-1), then (count-2), ... until 1 platform at top.
+  // Vertical position decreases by gap each row
   let currentY = GAME_HEIGHT - 150;
+  let margin = 100;
+  let availableWidth = GAME_WIDTH - 2*margin;
 
-  // Even distribution: each platform independently placed within [xMin, xMax]
-  for (let i=0; i<count; i++) {
+  for (let row = 0; row < count; row++) {
     currentY -= gap;
-    let newX = Math.floor(Math.random() * (xMax - xMin)) + xMin;
-    platforms.push({x:newX, y:currentY, width: platformWidth, height: platformHeight});
+    let platformsInRow = count - row; // bottom row: count, top row: 1
+    if (platformsInRow < 1) platformsInRow = 1;
+    // Compute horizontal arrangement
+    // Total width needed for all platforms in this row
+    let totalPlatformsWidth = platformsInRow * platformWidth;
+    let totalSpacing = availableWidth - totalPlatformsWidth;
+    let spacing = (platformsInRow > 1) ? totalSpacing / (platformsInRow - 1) : 0;
+    
+    let startX = margin;
+    for (let i=0; i<platformsInRow; i++) {
+      let x = startX;
+      platforms.push({x:x, y:currentY, width:platformWidth, height:platformHeight});
+      startX += platformWidth + spacing;
+    }
   }
 
-  // Place bone above the top platform
-  bone.y = Math.max(100, currentY - 60);
-  bone.x = GAME_WIDTH/2 - bone.width/2; 
+  // The top platform is the last one placed (at the top row)
+  // It's the single platform row at the end: when row = count-1, platformsInRow=1
+  // That means the bone should be placed above the top platform
+  let topPlatform = platforms[platforms.length - 1]; // last inserted platform is top one
+  bone.y = Math.max(100, topPlatform.y - 60);
+  bone.x = topPlatform.x + (topPlatform.width/2) - (bone.width/2); 
 }
 
 function nextLevel() {
@@ -499,4 +511,3 @@ showTitleScreen();
 </script>
 </body>
 </html>
-
