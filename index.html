@@ -152,7 +152,6 @@
     <img id="bag-image" style="display:none;" />
     <img id="island-image" style="display:none;" />
     <img id="start-image" style="display:none;" />
-    <!-- Make sure filename matches exactly what you have -->
     <img id="background-image" style="display:none;" />
     <img id="background2-image" style="display:none;" />
 
@@ -196,6 +195,9 @@ const DOG_WIDTH = 64;
 const DOG_HEIGHT = 64;
 const MAX_LEVEL = 25;
 
+// Reduce platform collision box so dog doesn't appear floating
+const PLATFORM_COLLISION_OFFSET = 10;
+
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
@@ -208,7 +210,6 @@ function updateScaleAndOffsets() {
   let containerWidth = gameContainer.clientWidth;
   let containerHeight = gameContainer.clientHeight;
 
-  // Fit entire 700x400 inside container
   scale = Math.min(containerWidth / BASE_GAME_WIDTH, containerHeight / BASE_GAME_HEIGHT);
   let totalWidth = BASE_GAME_WIDTH * scale;
   let totalHeight = BASE_GAME_HEIGHT * scale;
@@ -227,7 +228,6 @@ const STATE_GAME_OVER = 2;
 let gameState = STATE_TITLE;
 
 // ------ IMAGES ------
-// Ensure filenames match your assets
 const titleImage = document.getElementById('title-image');
 titleImage.src = 'Title.png';
 
@@ -244,13 +244,11 @@ const bagImage = document.getElementById('bag-image');
 bagImage.src = 'Bag.png';
 
 const startImage = document.getElementById('start-image');
-// Use the new start platform image name
 startImage.src = 'start.png';
 
 const islandImage = document.getElementById('island-image');
 islandImage.src = 'island.png';
 
-// Make sure your second background is named exactly "Background 2.png"
 const backgroundImage = document.getElementById('background-image');
 backgroundImage.src = 'Background.png';
 
@@ -267,10 +265,6 @@ background2Image.onerror = () => {
 };
 
 function getCurrentBackground() {
-  // Every 5 levels switch
-  // Levels 1-5 => backgroundImage
-  // Levels 6-10 => background2Image
-  // and so on...
   let cycle = Math.floor((level-1)/5) % 2;
   return cycle === 0 ? backgroundImage : background2Image;
 }
@@ -429,10 +423,6 @@ function resetGame() {
 function generatePlatforms(level) {
   platforms = [];
 
-  // We'll assume start.png height roughly equals 50 (adjust if needed)
-  // Flush to the floor: p.y = GAME_HEIGHT - p.height
-  // Let's keep the bottom platform height at 50 as before
-  // If your start.png is a different height, adjust here
   let bottomPlatformHeight = 50; 
   let bottomPlatforms = [];
   if (level <= 5) {
@@ -476,8 +466,14 @@ function generatePlatforms(level) {
     platforms.push({x:newX, y:currentY, width: platformWidth, height: platformHeight, start:false});
   }
 
-  bone.y = Math.max(100, currentY - 60);
-  bone.x = GAME_WIDTH/2 - bone.width/2; 
+  // Randomize Bone position higher and by level
+  let boneXMin = 50;
+  let boneXMax = GAME_WIDTH - bone.width - 50;
+  bone.x = Math.floor(Math.random() * (boneXMax - boneXMin)) + boneXMin;
+
+  // Place bone higher with each level
+  bone.y = currentY - (60 + level * 5);
+  if (bone.y < 50) bone.y = 50; // ensure not off top
 }
 
 function throwBags() {
@@ -534,8 +530,14 @@ function updateDog() {
 
   dog.onGround = false;
   for (let p of platforms) {
-    if (rectCollision(dog, p)) {
-      dog.y = p.y - dog.height;
+    let adjustedPlatform = {
+      x: p.x,
+      y: p.y + PLATFORM_COLLISION_OFFSET,
+      width: p.width,
+      height: p.height - PLATFORM_COLLISION_OFFSET
+    };
+    if (rectCollision(dog, adjustedPlatform)) {
+      dog.y = adjustedPlatform.y - dog.height;
       dog.vy = 0;
       dog.onGround = true;
     }
@@ -608,7 +610,7 @@ function drawTitleImage() {
   }
 
   let imgX = (GAME_WIDTH - width)/2;
-  let imgY = (GAME_HEIGHT - height)/2 - 20; // Slight up shift
+  let imgY = (GAME_HEIGHT - height)/2 - 20; 
   ctx.drawImage(titleImage, imgX, imgY, width, height);
 }
 
@@ -694,7 +696,6 @@ window.addEventListener('resize', ()=> {
 </script>
 </body>
 </html>
-
 
 
 
