@@ -34,12 +34,15 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 90vw;
+    max-width: 1200px;
+    height: 70vh;
   }
 
   #gameCanvas {
     display: block;
     width: 100%;
-    height: auto;
+    height: 100%;
   }
 
   .overlay-button {
@@ -65,7 +68,7 @@
 
   #fullscreen-button {
     top: 10px;
-    right: 90px;
+    right: 110px;
   }
 
   #start-button {
@@ -123,6 +126,7 @@
     border-radius: 10px;
     margin: 0 5px;
     user-select: none;
+    cursor: pointer;
   }
 
   .control-button:active {
@@ -147,14 +151,17 @@
     <img id="ship-image" style="display:none;" />
     <img id="bag-image" style="display:none;" />
     <img id="island-image" style="display:none;" />
+    <img id="start-image" style="display:none;" />
     <img id="background-image" style="display:none;" />
+    <img id="background2-image" style="display:none;" />
 
     <div id="game-over-text">GAME OVER</div>
     <button id="start-button" class="overlay-button">Start</button>
     <button id="mute-button" class="overlay-button">Mute</button>
     <button id="fullscreen-button" class="overlay-button">Full Screen</button>
     <button id="restart-button" class="overlay-button">Restart</button>
-    <button id="send-bone-button" class="overlay-button">Send Bone</button>
+    <!-- Change the text and add emojis -->
+    <button id="send-bone-button" class="overlay-button">Bone the Chart 🚀 🦴</button>
   </div>
 
   <div id="controls-container">
@@ -176,7 +183,6 @@
 
 <script>
 // ------ CONFIGURATION ------
-// 7:4 aspect ratio = 700 (width) : 400 (height)
 let BASE_GAME_WIDTH = 700;
 let BASE_GAME_HEIGHT = 400;
 
@@ -188,36 +194,24 @@ const JUMP_FORCE = -12;
 const DOG_SPEED = 5;
 const DOG_WIDTH = 64;
 const DOG_HEIGHT = 64;
-
-const LEVEL_COUNT = 100; // max difficulty scale
+const MAX_LEVEL = 25; // We'll consider difficulty up to level 25
+const LEVEL_COUNT = 100; // if needed beyond 25
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-// Initially set the canvas to the base size
-canvas.width = GAME_WIDTH;
-canvas.height = GAME_HEIGHT;
-
-// Resizing function to keep the aspect ratio and fit the container at 7:4
+// We'll not enforce any ratio, just fill the container:
 function resizeCanvas() {
   const gameContainer = document.getElementById('game-container');
-  const containerWidth = gameContainer.clientWidth;
-  const containerHeight = gameContainer.clientHeight;
-  const aspect = BASE_GAME_WIDTH / BASE_GAME_HEIGHT; // 7/4 = 1.75
+  // Fill entire container
+  let containerWidth = gameContainer.clientWidth;
+  let containerHeight = gameContainer.clientHeight;
 
-  let newWidth = containerWidth;
-  let newHeight = Math.round(newWidth / aspect);
-
-  if (newHeight > containerHeight) {
-    newHeight = containerHeight;
-    newWidth = Math.round(newHeight * aspect);
-  }
-
-  // Maintain internal game resolution
+  // Just scale canvas to container size (this may distort aspect ratio)
   canvas.width = BASE_GAME_WIDTH;
   canvas.height = BASE_GAME_HEIGHT;
-  canvas.style.width = newWidth + 'px';
-  canvas.style.height = newHeight + 'px';
+  canvas.style.width = containerWidth + 'px';
+  canvas.style.height = containerHeight + 'px';
 }
 
 // ------ GAME STATES ------
@@ -243,11 +237,25 @@ shipImage.src = 'Ship.png';
 const bagImage = document.getElementById('bag-image');
 bagImage.src = 'Bag.png';
 
+// start.png for the initial platform
+const startImage = document.getElementById('start-image');
+startImage.src = 'start.png';
+
 const islandImage = document.getElementById('island-image');
 islandImage.src = 'island.png';
 
 const backgroundImage = document.getElementById('background-image');
 backgroundImage.src = 'Background.png';
+
+const background2Image = document.getElementById('background2-image');
+background2Image.src = 'Background2.png';
+
+// We'll choose which background to use based on level
+function getCurrentBackground() {
+  // Every 5 levels switch background
+  let cycle = Math.floor((level-1)/5) % 2; 
+  return cycle === 0 ? backgroundImage : background2Image;
+}
 
 // Fallback if the background fails to load
 backgroundImage.onerror = () => {
@@ -312,48 +320,46 @@ window.addEventListener('keyup', (e) => {
   keys[e.code] = false;
 });
 
-// Mobile controls
+// Mobile and Desktop controls using the on-screen buttons
 const leftControl = document.getElementById('left-control');
 const rightControl = document.getElementById('right-control');
 const jumpControl = document.getElementById('jump-control');
 
-function touchStartHandler(directionKey) {
-  return (e) => {
-    e.preventDefault();
-    if (directionKey === 'left') {
-      keys['ArrowLeft'] = true;
-    } else if (directionKey === 'right') {
-      keys['ArrowRight'] = true;
-    } else if (directionKey === 'jump') {
-      keys['Space'] = true;
-    }
+function controlStart(directionKey) {
+  if (directionKey === 'left') {
+    keys['ArrowLeft'] = true;
+  } else if (directionKey === 'right') {
+    keys['ArrowRight'] = true;
+  } else if (directionKey === 'jump') {
+    keys['Space'] = true;
   }
 }
 
-function touchEndHandler(directionKey) {
-  return (e) => {
-    e.preventDefault();
-    if (directionKey === 'left') {
-      keys['ArrowLeft'] = false;
-    } else if (directionKey === 'right') {
-      keys['ArrowRight'] = false;
-    } else if (directionKey === 'jump') {
-      keys['Space'] = false;
-    }
+function controlEnd(directionKey) {
+  if (directionKey === 'left') {
+    keys['ArrowLeft'] = false;
+  } else if (directionKey === 'right') {
+    keys['ArrowRight'] = false;
+  } else if (directionKey === 'jump') {
+    keys['Space'] = false;
   }
 }
 
-leftControl.addEventListener('touchstart', touchStartHandler('left'), {passive:false});
-leftControl.addEventListener('touchend', touchEndHandler('left'), {passive:false});
-leftControl.addEventListener('touchcancel', touchEndHandler('left'), {passive:false});
+// Touch events for mobile
+leftControl.addEventListener('touchstart', (e)=>{e.preventDefault();controlStart('left');}, {passive:false});
+leftControl.addEventListener('touchend', (e)=>{e.preventDefault();controlEnd('left');}, {passive:false});
+rightControl.addEventListener('touchstart', (e)=>{e.preventDefault();controlStart('right');}, {passive:false});
+rightControl.addEventListener('touchend', (e)=>{e.preventDefault();controlEnd('right');}, {passive:false});
+jumpControl.addEventListener('touchstart', (e)=>{e.preventDefault();controlStart('jump');}, {passive:false});
+jumpControl.addEventListener('touchend', (e)=>{e.preventDefault();controlEnd('jump');}, {passive:false});
 
-rightControl.addEventListener('touchstart', touchStartHandler('right'), {passive:false});
-rightControl.addEventListener('touchend', touchEndHandler('right'), {passive:false});
-rightControl.addEventListener('touchcancel', touchEndHandler('right'), {passive:false});
-
-jumpControl.addEventListener('touchstart', touchStartHandler('jump'), {passive:false});
-jumpControl.addEventListener('touchend', touchEndHandler('jump'), {passive:false});
-jumpControl.addEventListener('touchcancel', touchEndHandler('jump'), {passive:false});
+// Mouse events for desktop on-screen buttons
+leftControl.addEventListener('mousedown', ()=> controlStart('left'));
+leftControl.addEventListener('mouseup', ()=> controlEnd('left'));
+rightControl.addEventListener('mousedown', ()=> controlStart('right'));
+rightControl.addEventListener('mouseup', ()=> controlEnd('right'));
+jumpControl.addEventListener('mousedown', ()=> controlStart('jump'));
+jumpControl.addEventListener('mouseup', ()=> controlEnd('jump'));
 
 // ------ GAME VARIABLES ------
 let level = 1;
@@ -366,6 +372,18 @@ let platforms = [];
 let throwTimer = 0;
 let throwInterval = 120;
 let gameOver = false;
+
+// Difficulty scaling function
+function difficultyAdjustments() {
+  // Increase difficulty based on level:
+  // Faster throwing intervals
+  throwInterval = Math.max(60, 120 - level);
+
+  // Increase bag speed and number of bags at higher levels
+  // For simplicity, let's linearly scale speed and count
+  // At level 25, maybe double speed and throw 2 bags at once
+  // store them in global variables or compute on the fly
+}
 
 function startGame() {
   startButton.style.display = 'none';
@@ -388,6 +406,8 @@ function resetGame() {
   level = 1;
   dog.x = 100;
   dog.y = 300;
+  dog.width = DOG_WIDTH;
+  dog.height = DOG_HEIGHT;
   dog.vy = 0;
   dog.onGround = false;
   ship.x = 400;
@@ -399,29 +419,30 @@ function resetGame() {
   if(!musicMuted) bgMusic.play();
   
   difficultyAdjustments();
-  animate();
-}
-
-function difficultyAdjustments() {
-  throwInterval = Math.max(60, 120 - level);
   generatePlatforms(level);
+  animate();
 }
 
 function generatePlatforms(level) {
   platforms = [];
 
+  // The bottom platform where the dog starts is now start.png
+  // We'll still introduce gaps at higher levels, as before.
   let bottomPlatforms = [];
   if (level <= 5) {
-    bottomPlatforms.push({x:0, y:GAME_HEIGHT - 50, width: GAME_WIDTH, height: 50});
+    // One big bottom platform (start.png)
+    bottomPlatforms.push({x:0, y:GAME_HEIGHT - 50, width: GAME_WIDTH, height: 50, start:true});
     dog.x = 100;
   } else if (level <= 10) {
+    // Two bottom platforms: a gap
     let halfWidth = (GAME_WIDTH - 100) / 2; 
-    bottomPlatforms.push({x:0, y: GAME_HEIGHT - 50, width: halfWidth, height:50});
+    bottomPlatforms.push({x:0, y: GAME_HEIGHT - 50, width: halfWidth, height:50, start:true});
     bottomPlatforms.push({x:halfWidth+100, y: GAME_HEIGHT - 50, width: halfWidth, height:50});
     dog.x = 50;
   } else {
+    // Three bottom platforms: two gaps
     let segmentWidth = (GAME_WIDTH - 200) / 3; 
-    bottomPlatforms.push({x:0, y: GAME_HEIGHT - 50, width: segmentWidth, height:50});
+    bottomPlatforms.push({x:0, y: GAME_HEIGHT - 50, width: segmentWidth, height:50, start:true});
     bottomPlatforms.push({x:segmentWidth+100, y: GAME_HEIGHT - 50, width: segmentWidth, height:50});
     bottomPlatforms.push({x:2*(segmentWidth+100), y: GAME_HEIGHT - 50, width: segmentWidth, height:50});
     dog.x = 50;
@@ -449,21 +470,45 @@ function generatePlatforms(level) {
   for (let i=0; i<count; i++) {
     currentY -= gap;
     let newX = Math.floor(Math.random() * (xMax - xMin)) + xMin;
-    platforms.push({x:newX, y:currentY, width: platformWidth, height: platformHeight});
+    platforms.push({x:newX, y:currentY, width: platformWidth, height: platformHeight, start:false});
   }
 
   bone.y = Math.max(100, currentY - 60);
   bone.x = GAME_WIDTH/2 - bone.width/2; 
 }
 
+// Modify the bag throwing logic to scale difficulty up to level 25:
+// More speed and multiple bags per throw
+function throwBags() {
+  // bagSpeed base
+  let baseBagSpeed = 3;
+  // By level 25, let's increase speed by +2
+  let additionalSpeed = (level/25)*2; // scales 0 to 2 as level goes to 25
+  let bagSpeed = baseBagSpeed + additionalSpeed;
+
+  // Number of bags at once: start with 1, by level 25 maybe 3
+  let bagCount = 1 + Math.floor((level/25)*2);
+
+  for (let i=0; i<bagCount; i++) {
+    let angle = Math.atan2(dog.y - ship.y, dog.x - ship.x);
+    // Slight variation in angle for multiple bags
+    angle += (i - (bagCount-1)/2) * 0.1; // spread them slightly if multiple
+    let vx = Math.cos(angle)*bagSpeed;
+    let vy = Math.sin(angle)*bagSpeed;
+    bags.push({x:ship.x+ship.width/2, y:ship.y+ship.height, width:30, height:30, vx:vx, vy:vy});
+  }
+}
+
 function nextLevel() {
   level++;
+  if (level > MAX_LEVEL) level = MAX_LEVEL; // cap level if needed
   dog.x = 100;
   dog.y = GAME_HEIGHT - 150;
   dog.vy = 0;
   dog.onGround = false;
   bags = [];
   difficultyAdjustments();
+  generatePlatforms(level);
 }
 
 function endGame() {
@@ -513,6 +558,7 @@ function updateDog() {
   }
 }
 
+let throwTimer = 0;
 function updateShip() {
   ship.x += ship.vx;
   if (ship.x < 0 || ship.x + ship.width > GAME_WIDTH) {
@@ -522,11 +568,7 @@ function updateShip() {
   throwTimer++;
   if (throwTimer > throwInterval) {
     throwTimer = 0;
-    let bagSpeed = 3 + level*0.1;
-    let angle = Math.atan2(dog.y - ship.y, dog.x - ship.x);
-    let vx = Math.cos(angle)*bagSpeed;
-    let vy = Math.sin(angle)*bagSpeed;
-    bags.push({x:ship.x+ship.width/2, y:ship.y+ship.height, width:30, height:30, vx:vx, vy:vy});
+    throwBags();
   }
 }
 
@@ -561,7 +603,8 @@ function rectCollision(a,b) {
 }
 
 function draw() {
-  ctx.drawImage(backgroundImage, 0,0, GAME_WIDTH, GAME_HEIGHT);
+  let bg = getCurrentBackground();
+  ctx.drawImage(bg, 0,0, GAME_WIDTH, GAME_HEIGHT);
 
   if (gameState === STATE_TITLE) {
     ctx.fillStyle = '#000';
@@ -571,7 +614,11 @@ function draw() {
     ctx.drawImage(titleImage, imgX, imgY);
   } else if (gameState === STATE_PLAY) {
     for (let p of platforms) {
-      ctx.drawImage(islandImage, p.x, p.y, p.width, p.height);
+      if (p.start) {
+        ctx.drawImage(startImage, p.x, p.y, p.width, p.height);
+      } else {
+        ctx.drawImage(islandImage, p.x, p.y, p.width, p.height);
+      }
     }
 
     ctx.drawImage(boneImage, bone.x, bone.y, bone.width, bone.height);
@@ -587,7 +634,7 @@ function draw() {
     ctx.font = '20px sans-serif';
     ctx.fillText('Level: ' + level, 20, 30);
   } else if (gameState === STATE_GAME_OVER) {
-    ctx.drawImage(backgroundImage, 0,0, GAME_WIDTH, GAME_HEIGHT);
+    ctx.drawImage(bg, 0,0, GAME_WIDTH, GAME_HEIGHT);
   }
 }
 
@@ -623,6 +670,10 @@ backgroundImage.onload = () => {
   showTitleScreen();
   resizeCanvas();
 };
+background2Image.onload = () => {
+  // Just ensure it's cached
+};
 </script>
 </body>
 </html>
+
