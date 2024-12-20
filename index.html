@@ -127,11 +127,15 @@ const ctx = canvas.getContext('2d');
 canvas.width = GAME_WIDTH;
 canvas.height = GAME_HEIGHT;
 
-// Vertical gap base and added randomness:
 const BASE_GAP = 80; 
 const VERTICAL_GAP_INCREASE = 2;
-const VERTICAL_GAP_RANDOMNESS = 20; // +/- max pixels random offset in gap
-const HORIZONTAL_JITTER = 20; // +/- max pixels random offset per platform horizontally
+const VERTICAL_GAP_RANDOMNESS = 20; 
+const HORIZONTAL_JITTER = 20; 
+// We'll break each platform into multiple small segments to create holes.
+// For example, each "platform" could be made of 3-5 segments.
+const segmentsPerPlatform = 4; 
+const segmentGap = 10; // gap between segments within a single platform row
+const holeProbability = 0.3; // 30% chance a segment is skipped to create a hole
 
 // ------ GAME STATES ------
 const STATE_TITLE = 0;
@@ -219,7 +223,6 @@ let throwInterval = 120; // decreases with level to increase difficulty
 let gameOver = false;
 
 function startGame() {
-  // Hide title screen elements
   startButton.style.display = 'none';
   muteButton.style.display = 'block';
 
@@ -270,15 +273,15 @@ function generatePlatforms(level) {
   } else if (level <= 10) {
     // Two bottom platforms: a gap in the middle
     let halfWidth = (GAME_WIDTH - 100) / 2; 
-    bottomPlatforms.push({x:0, y: GAME_HEIGHT - 50, width: halfWidth, height:50});
-    bottomPlatforms.push({x:halfWidth+100, y: GAME_HEIGHT - 50, width: halfWidth, height:50});
+    bottomPlatforms = bottomPlatforms.concat(makePlatformSegments(0, GAME_HEIGHT -50, halfWidth, 1));
+    bottomPlatforms = bottomPlatforms.concat(makePlatformSegments(halfWidth+100, GAME_HEIGHT -50, halfWidth, 1));
     dog.x = 50;
   } else {
     // Three bottom platforms: two gaps
     let segmentWidth = (GAME_WIDTH - 200) / 3; 
-    bottomPlatforms.push({x:0, y: GAME_HEIGHT - 50, width: segmentWidth, height:50});
-    bottomPlatforms.push({x:segmentWidth+100, y: GAME_HEIGHT - 50, width: segmentWidth, height:50});
-    bottomPlatforms.push({x:2*(segmentWidth+100), y: GAME_HEIGHT - 50, width: segmentWidth, height:50});
+    bottomPlatforms = bottomPlatforms.concat(makePlatformSegments(0, GAME_HEIGHT -50, segmentWidth, 1));
+    bottomPlatforms = bottomPlatforms.concat(makePlatformSegments(segmentWidth+100, GAME_HEIGHT -50, segmentWidth, 1));
+    bottomPlatforms = bottomPlatforms.concat(makePlatformSegments(2*(segmentWidth+100), GAME_HEIGHT -50, segmentWidth, 1));
     dog.x = 50;
   }
 
@@ -286,9 +289,13 @@ function generatePlatforms(level) {
     platforms.push(bp);
   }
 
-  // Place dog on top of one of the bottom platforms securely
-  // Let's just pick the leftmost bottom platform to stand on
-  let standPlatform = bottomPlatforms[0];
+  // Place dog on the leftmost bottom platform segment
+  let bottomRowY = GAME_HEIGHT - 50;
+  let standPlatform = platforms.find(p => p.y === bottomRowY);
+  if(!standPlatform) {
+    standPlatform = {x:0, y:GAME_HEIGHT - 50, width:GAME_WIDTH, height:50};
+    platforms.push(standPlatform);
+  }
   dog.y = standPlatform.y - DOG_HEIGHT;
   dog.onGround = true;
   dog.vy = 0;
@@ -299,55 +306,79 @@ function generatePlatforms(level) {
   let platformWidth = 120 - Math.min(level * 2, 80); 
   let platformHeight = 20;
 
-  // Pyramid shape: bottom row has 'count' platforms, top row 1 platform
   let currentY = standPlatform.y - DOG_HEIGHT - baseGap;
   let margin = 100;
   let availableWidth = GAME_WIDTH - 2*margin;
 
   for (let row = 0; row < count; row++) {
-    // Randomize the gap for this row
     let gapOffset = Math.random() * VERTICAL_GAP_RANDOMNESS - (VERTICAL_GAP_RANDOMNESS/2);
     currentY -= (baseGap + gapOffset);
 
     let platformsInRow = count - row;
     if (platformsInRow < 1) platformsInRow = 1;
+    // The entire row width (availableWidth) holds 'platformsInRow' "platforms"
+    // Each "platform" is now broken into multiple segments
     let totalPlatformsWidth = platformsInRow * platformWidth;
     let totalSpacing = availableWidth - totalPlatformsWidth;
     let spacing = (platformsInRow > 1) ? totalSpacing / (platformsInRow - 1) : 0;
 
     let startX = margin;
     for (let i=0; i<platformsInRow; i++) {
-      // Add horizontal jitter
-      let jitterX = Math.random() * HORIZONTAL_JITTER - (HORIZONTAL_JITTER/2);
-      let x = startX + jitterX;
-      // Clamp x so platform doesn't go off screen
+      // Now, instead of one single platform, we create multiple segments to form a holey platform.
+      let x = startX + (Math.random()*HORIZONTAL_JITTER - HORIZONTAL_JITTER/2);
       if (x < 0) x = 0;
       if (x + platformWidth > GAME_WIDTH) x = GAME_WIDTH - platformWidth;
 
-      platforms.push({x:x, y:currentY, width:platformWidth, height:platformHeight});
+      let platformSegments = makePlatformSegments(x, currentY, platformWidth, segmentsPerPlatform);
+      for (let seg of platformSegments) {
+        platforms.push(seg);
+      }
       startX += platformWidth + spacing;
     }
   }
 
-  let topPlatform = platforms[platforms.length - 1]; // last inserted is top
+  // The top platform is the last one placed
+  let topRowY = Math.min(...platforms.map(p=>p.y));
+  let topPlatforms = platforms.filter(p=>p.y === topRowY);
+  // Just pick the middle top platform segment to place the bone above
+  let topPlatform = topPlatforms[Math.floor(topPlatforms.length/2)];
   bone.y = Math.max(100, topPlatform.y - 60);
   bone.x = topPlatform.x + (topPlatform.width/2) - (bone.width/2); 
+}
+
+// Create multiple small segments to represent one "platform" with holes
+// We'll split the given width into segmentsPerPlatform small segments, separated by gaps, and randomly skip some segments.
+function makePlatformSegments(xStart, y, totalWidth, segmentsCount) {
+  let segments = [];
+  // Each segment has a width less than totalWidth/segmentsCount - some margin for segmentGap
+  let segmentWidth = Math.max(20, (totalWidth - (segmentGap*(segmentsCount-1)))/segmentsCount);
+
+  let currentX = xStart;
+  for (let i=0; i<segmentsCount; i++) {
+    // Decide if we skip this segment to create a hole
+    if (Math.random() < holeProbability) {
+      // skip segment
+      currentX += segmentWidth + segmentGap;
+      continue;
+    }
+    segments.push({x:currentX, y:y, width:segmentWidth, height:20});
+    currentX += segmentWidth + segmentGap;
+  }
+  return segments;
 }
 
 function nextLevel() {
   level++;
   dog.x = 100;
-  // Place dog at bottom platform again for new level
-  // We'll generate new platforms first, then place dog at bottom afterwards.
   bags = [];
   difficultyAdjustments();
 
   // After generating platforms, place dog on the bottom platform again
-  let bottomMostPlatforms = platforms.filter(p => p.y === (GAME_HEIGHT - 50));
-  let standPlatform = bottomMostPlatforms[0]; // leftmost bottom platform
-  if (!standPlatform) {
-    // fallback: if none found, just place at default
-    standPlatform = {x:0, y:GAME_HEIGHT -50, width:GAME_WIDTH, height:50};
+  let bottomRowY = GAME_HEIGHT - 50;
+  let standPlatform = platforms.find(p => p.y === bottomRowY);
+  if(!standPlatform) {
+    standPlatform = {x:0, y:GAME_HEIGHT - 50, width:GAME_WIDTH, height:50};
+    platforms.push(standPlatform);
   }
   dog.y = standPlatform.y - DOG_HEIGHT;
   dog.onGround = true;
@@ -383,7 +414,6 @@ function updateDog() {
   dog.y += dog.vy;
 
   // Collide with platforms
-  let wasOnGround = dog.onGround;
   dog.onGround = false;
   for (let p of platforms) {
     if (rectCollision(dog, p)) {
@@ -396,15 +426,11 @@ function updateDog() {
   // Boundaries
   if (dog.x < 0) dog.x = 0;
   if (dog.x + dog.width > GAME_WIDTH) dog.x = GAME_WIDTH - dog.width;
-
-  // Prevent dog from going above the top boundary
   if (dog.y < 0) {
     dog.y = 0;
     dog.vy = 0;
   }
-
   if (dog.y > GAME_HEIGHT) {
-    // Fell off screen = game over
     endGame();
   }
 }
@@ -431,7 +457,7 @@ function updateBags() {
   for (let b of bags) {
     b.x += b.vx;
     b.y += b.vy;
-    b.vy += 0.1; // slight gravity to bags
+    b.vy += 0.1;
   }
   bags = bags.filter(b => b.y < GAME_HEIGHT+100 && b.x > -100 && b.x < GAME_WIDTH+100);
 }
@@ -446,7 +472,6 @@ function checkCollisions() {
 
   // Check if dog got the bone
   if (rectCollision(dog, bone)) {
-    // Play coin sound before moving to next level
     coinSound.currentTime = 0;
     coinSound.play();
     nextLevel();
@@ -461,11 +486,9 @@ function rectCollision(a,b) {
 }
 
 function draw() {
-  // Background
   ctx.drawImage(backgroundImage, 0,0, GAME_WIDTH, GAME_HEIGHT);
 
   if (gameState === STATE_TITLE) {
-    // Title screen: show title image centered
     ctx.fillStyle = '#000';
     ctx.fillRect(0,0,GAME_WIDTH,GAME_HEIGHT);
     let imgX = (GAME_WIDTH - titleImage.width)/2;
@@ -477,26 +500,20 @@ function draw() {
       ctx.drawImage(islandImage, p.x, p.y, p.width, p.height);
     }
 
-    // Draw bone
     ctx.drawImage(boneImage, bone.x, bone.y, bone.width, bone.height);
-
-    // Draw ship
     ctx.drawImage(shipImage, ship.x, ship.y, ship.width, ship.height);
 
-    // Draw bags
     for (let b of bags) {
       ctx.drawImage(bagImage, b.x, b.y, b.width, b.height);
     }
 
-    // Draw dog
     ctx.drawImage(dogImage, dog.x, dog.y, dog.width, dog.height);
 
-    // HUD: Display Level
     ctx.fillStyle = '#fff';
     ctx.font = '20px sans-serif';
     ctx.fillText('Level: ' + level, 20, 30);
+
   } else if (gameState === STATE_GAME_OVER) {
-    // Draw final background frame
     ctx.drawImage(backgroundImage, 0,0, GAME_WIDTH, GAME_HEIGHT);
   }
 }
@@ -517,7 +534,6 @@ function animate() {
   }
 }
 
-// Initial display setup for title screen
 function showTitleScreen() {
   startButton.style.display = 'block';
   muteButton.style.display = 'none';
