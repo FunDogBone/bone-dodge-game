@@ -22,6 +22,7 @@
     align-items: center;
     justify-content: center;
     background: #000; /* Full screen background */
+    position: relative;
   }
 
   #game-container {
@@ -82,6 +83,55 @@
     display: none;
     z-index: 10;
   }
+
+  /* Mobile control buttons */
+  .mobile-controls {
+    position: absolute;
+    bottom: 20px;
+    width: 100%;
+    left: 0;
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none; /* so that clicking on empty area doesn't block game */
+  }
+
+  .control-button {
+    pointer-events: auto; /* allow clicking/touching on these */
+    background: rgba(255,255,255,0.2);
+    border: 2px solid #fff;
+    color: #fff;
+    font-size: 24px;
+    padding: 20px;
+    border-radius: 10px;
+    margin: 0 10px;
+    user-select: none;
+  }
+
+  .control-left-right {
+    display: flex;
+    margin-left: 20px;
+  }
+
+  .control-jump {
+    margin-right: 20px;
+  }
+
+  .control-button:active {
+    background: rgba(255,255,255,0.4);
+  }
+
+  @media (max-width: 900px) {
+    /* Scale canvas on smaller screens to fit */
+    #game-container {
+      width: 100%;
+      height: auto;
+    }
+    #gameCanvas {
+      width: 100%;
+      height: auto;
+    }
+  }
+
 </style>
 </head>
 <body>
@@ -101,6 +151,17 @@
     <button id="mute-button" class="overlay-button">Mute</button>
     <button id="restart-button" class="overlay-button">Restart</button>
     <button id="send-bone-button" class="overlay-button">Send Bone</button>
+  </div>
+
+  <!-- Mobile Control Overlays -->
+  <div class="mobile-controls">
+    <div class="control-left-right">
+      <div id="left-control" class="control-button">←</div>
+      <div id="right-control" class="control-button">→</div>
+    </div>
+    <div class="control-jump">
+      <div id="jump-control" class="control-button">⤒</div>
+    </div>
   </div>
 </div>
 
@@ -201,6 +262,52 @@ window.addEventListener('keydown', (e) => {
 window.addEventListener('keyup', (e) => {
   keys[e.code] = false;
 });
+
+// Mobile controls
+const leftControl = document.getElementById('left-control');
+const rightControl = document.getElementById('right-control');
+const jumpControl = document.getElementById('jump-control');
+
+// Helper functions for touch
+function touchStartHandler(directionKey) {
+  return (e) => {
+    e.preventDefault();
+    if (directionKey === 'left') {
+      keys['ArrowLeft'] = true;
+    } else if (directionKey === 'right') {
+      keys['ArrowRight'] = true;
+    } else if (directionKey === 'jump') {
+      // Simulate jump key
+      keys['Space'] = true;
+    }
+  }
+}
+
+function touchEndHandler(directionKey) {
+  return (e) => {
+    e.preventDefault();
+    if (directionKey === 'left') {
+      keys['ArrowLeft'] = false;
+    } else if (directionKey === 'right') {
+      keys['ArrowRight'] = false;
+    } else if (directionKey === 'jump') {
+      keys['Space'] = false;
+    }
+  }
+}
+
+// Add touch listeners
+leftControl.addEventListener('touchstart', touchStartHandler('left'), {passive:false});
+leftControl.addEventListener('touchend', touchEndHandler('left'), {passive:false});
+leftControl.addEventListener('touchcancel', touchEndHandler('left'), {passive:false});
+
+rightControl.addEventListener('touchstart', touchStartHandler('right'), {passive:false});
+rightControl.addEventListener('touchend', touchEndHandler('right'), {passive:false});
+rightControl.addEventListener('touchcancel', touchEndHandler('right'), {passive:false});
+
+jumpControl.addEventListener('touchstart', touchStartHandler('jump'), {passive:false});
+jumpControl.addEventListener('touchend', touchEndHandler('jump'), {passive:false});
+jumpControl.addEventListener('touchcancel', touchEndHandler('jump'), {passive:false});
 
 // ------ GAME VARIABLES ------
 let level = 1;
@@ -333,10 +440,10 @@ function endGame() {
 
 function updateDog() {
   // Horizontal movement
-  if (keys['ArrowLeft'] || keys['KeyA']) {
+  if (keys['ArrowLeft']) {
     dog.x -= DOG_SPEED;
   }
-  if (keys['ArrowRight'] || keys['KeyD']) {
+  if (keys['ArrowRight']) {
     dog.x += DOG_SPEED;
   }
 
