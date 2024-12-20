@@ -127,6 +127,12 @@ const ctx = canvas.getContext('2d');
 canvas.width = GAME_WIDTH;
 canvas.height = GAME_HEIGHT;
 
+// Vertical gap base and added randomness:
+const BASE_GAP = 80; 
+const VERTICAL_GAP_INCREASE = 2;
+const VERTICAL_GAP_RANDOMNESS = 20; // +/- max pixels random offset in gap
+const HORIZONTAL_JITTER = 20; // +/- max pixels random offset per platform horizontally
+
 // ------ GAME STATES ------
 const STATE_TITLE = 0;
 const STATE_PLAY = 1;
@@ -280,46 +286,50 @@ function generatePlatforms(level) {
     platforms.push(bp);
   }
 
-  dog.y = GAME_HEIGHT - 150;
-  dog.onGround = false;
+  // Place dog on top of one of the bottom platforms securely
+  // Let's just pick the leftmost bottom platform to stand on
+  let standPlatform = bottomPlatforms[0];
+  dog.y = standPlatform.y - DOG_HEIGHT;
+  dog.onGround = true;
   dog.vy = 0;
 
-  // Create a triangular structure of platforms above the bottom platforms.
-  // The number of rows will be 'count'.
-  // Each row from bottom to top has one fewer platform, forming a pyramid.
+  // Triangular structure with random vertical gaps
   let count = Math.max(5, 10 - Math.floor(level/10));
-  let gap = 80 + (level * 2); 
+  let baseGap = BASE_GAP + (level * VERTICAL_GAP_INCREASE);
   let platformWidth = 120 - Math.min(level * 2, 80); 
   let platformHeight = 20;
 
-  // We'll form a pyramid: bottom row has 'count' platforms, above that (count-1), then (count-2), ... until 1 platform at top.
-  // Vertical position decreases by gap each row
-  let currentY = GAME_HEIGHT - 150;
+  // Pyramid shape: bottom row has 'count' platforms, top row 1 platform
+  let currentY = standPlatform.y - DOG_HEIGHT - baseGap;
   let margin = 100;
   let availableWidth = GAME_WIDTH - 2*margin;
 
   for (let row = 0; row < count; row++) {
-    currentY -= gap;
-    let platformsInRow = count - row; // bottom row: count, top row: 1
+    // Randomize the gap for this row
+    let gapOffset = Math.random() * VERTICAL_GAP_RANDOMNESS - (VERTICAL_GAP_RANDOMNESS/2);
+    currentY -= (baseGap + gapOffset);
+
+    let platformsInRow = count - row;
     if (platformsInRow < 1) platformsInRow = 1;
-    // Compute horizontal arrangement
-    // Total width needed for all platforms in this row
     let totalPlatformsWidth = platformsInRow * platformWidth;
     let totalSpacing = availableWidth - totalPlatformsWidth;
     let spacing = (platformsInRow > 1) ? totalSpacing / (platformsInRow - 1) : 0;
-    
+
     let startX = margin;
     for (let i=0; i<platformsInRow; i++) {
-      let x = startX;
+      // Add horizontal jitter
+      let jitterX = Math.random() * HORIZONTAL_JITTER - (HORIZONTAL_JITTER/2);
+      let x = startX + jitterX;
+      // Clamp x so platform doesn't go off screen
+      if (x < 0) x = 0;
+      if (x + platformWidth > GAME_WIDTH) x = GAME_WIDTH - platformWidth;
+
       platforms.push({x:x, y:currentY, width:platformWidth, height:platformHeight});
       startX += platformWidth + spacing;
     }
   }
 
-  // The top platform is the last one placed (at the top row)
-  // It's the single platform row at the end: when row = count-1, platformsInRow=1
-  // That means the bone should be placed above the top platform
-  let topPlatform = platforms[platforms.length - 1]; // last inserted platform is top one
+  let topPlatform = platforms[platforms.length - 1]; // last inserted is top
   bone.y = Math.max(100, topPlatform.y - 60);
   bone.x = topPlatform.x + (topPlatform.width/2) - (bone.width/2); 
 }
@@ -327,11 +337,21 @@ function generatePlatforms(level) {
 function nextLevel() {
   level++;
   dog.x = 100;
-  dog.y = GAME_HEIGHT - 150;
-  dog.vy = 0;
-  dog.onGround = false;
+  // Place dog at bottom platform again for new level
+  // We'll generate new platforms first, then place dog at bottom afterwards.
   bags = [];
   difficultyAdjustments();
+
+  // After generating platforms, place dog on the bottom platform again
+  let bottomMostPlatforms = platforms.filter(p => p.y === (GAME_HEIGHT - 50));
+  let standPlatform = bottomMostPlatforms[0]; // leftmost bottom platform
+  if (!standPlatform) {
+    // fallback: if none found, just place at default
+    standPlatform = {x:0, y:GAME_HEIGHT -50, width:GAME_WIDTH, height:50};
+  }
+  dog.y = standPlatform.y - DOG_HEIGHT;
+  dog.onGround = true;
+  dog.vy = 0;
 }
 
 function endGame() {
@@ -363,6 +383,7 @@ function updateDog() {
   dog.y += dog.vy;
 
   // Collide with platforms
+  let wasOnGround = dog.onGround;
   dog.onGround = false;
   for (let p of platforms) {
     if (rectCollision(dog, p)) {
