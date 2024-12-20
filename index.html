@@ -41,8 +41,6 @@
 
   #gameCanvas {
     display: block;
-    /* We won't rely on CSS scaling for the game world,
-       We'll do it in JS with transform() */
     width: 100%;
     height: 100%;
   }
@@ -154,6 +152,7 @@
     <img id="bag-image" style="display:none;" />
     <img id="island-image" style="display:none;" />
     <img id="start-image" style="display:none;" />
+    <!-- Make sure filename matches exactly what you have -->
     <img id="background-image" style="display:none;" />
     <img id="background2-image" style="display:none;" />
 
@@ -209,15 +208,13 @@ function updateScaleAndOffsets() {
   let containerWidth = gameContainer.clientWidth;
   let containerHeight = gameContainer.clientHeight;
 
-  // Ensure entire 700x400 area fits
+  // Fit entire 700x400 inside container
   scale = Math.min(containerWidth / BASE_GAME_WIDTH, containerHeight / BASE_GAME_HEIGHT);
-  // Compute offsets to center
   let totalWidth = BASE_GAME_WIDTH * scale;
   let totalHeight = BASE_GAME_HEIGHT * scale;
   offsetX = (containerWidth - totalWidth) / 2;
   offsetY = (containerHeight - totalHeight) / 2;
 
-  // Resize canvas to match container size for crisp rendering
   canvas.width = containerWidth;
   canvas.height = containerHeight;
 }
@@ -230,6 +227,7 @@ const STATE_GAME_OVER = 2;
 let gameState = STATE_TITLE;
 
 // ------ IMAGES ------
+// Ensure filenames match your assets
 const titleImage = document.getElementById('title-image');
 titleImage.src = 'Title.png';
 
@@ -246,16 +244,18 @@ const bagImage = document.getElementById('bag-image');
 bagImage.src = 'Bag.png';
 
 const startImage = document.getElementById('start-image');
+// Use the new start platform image name
 startImage.src = 'start.png';
 
 const islandImage = document.getElementById('island-image');
 islandImage.src = 'island.png';
 
+// Make sure your second background is named exactly "Background 2.png"
 const backgroundImage = document.getElementById('background-image');
 backgroundImage.src = 'Background.png';
 
 const background2Image = document.getElementById('background2-image');
-background2Image.src = 'Background2.png';
+background2Image.src = 'Background 2.png';
 
 backgroundImage.onerror = () => {
   console.error("Failed to load Background.png");
@@ -263,11 +263,15 @@ backgroundImage.onerror = () => {
 };
 
 background2Image.onerror = () => {
-  console.error("Failed to load Background2.png");
+  console.error("Failed to load Background 2.png");
 };
 
 function getCurrentBackground() {
-  let cycle = Math.floor((level-1)/5) % 2; 
+  // Every 5 levels switch
+  // Levels 1-5 => backgroundImage
+  // Levels 6-10 => background2Image
+  // and so on...
+  let cycle = Math.floor((level-1)/5) % 2;
   return cycle === 0 ? backgroundImage : background2Image;
 }
 
@@ -425,20 +429,25 @@ function resetGame() {
 function generatePlatforms(level) {
   platforms = [];
 
+  // We'll assume start.png height roughly equals 50 (adjust if needed)
+  // Flush to the floor: p.y = GAME_HEIGHT - p.height
+  // Let's keep the bottom platform height at 50 as before
+  // If your start.png is a different height, adjust here
+  let bottomPlatformHeight = 50; 
   let bottomPlatforms = [];
   if (level <= 5) {
-    bottomPlatforms.push({x:0, y:GAME_HEIGHT - 50, width: GAME_WIDTH, height: 50, start:true});
+    bottomPlatforms.push({x:0, y:GAME_HEIGHT - bottomPlatformHeight, width: GAME_WIDTH, height: bottomPlatformHeight, start:true});
     dog.x = 100;
   } else if (level <= 10) {
     let halfWidth = (GAME_WIDTH - 100) / 2; 
-    bottomPlatforms.push({x:0, y: GAME_HEIGHT - 50, width: halfWidth, height:50, start:true});
-    bottomPlatforms.push({x:halfWidth+100, y: GAME_HEIGHT - 50, width: halfWidth, height:50});
+    bottomPlatforms.push({x:0, y: GAME_HEIGHT - bottomPlatformHeight, width: halfWidth, height:bottomPlatformHeight, start:true});
+    bottomPlatforms.push({x:halfWidth+100, y: GAME_HEIGHT - bottomPlatformHeight, width: halfWidth, height:bottomPlatformHeight, start:false});
     dog.x = 50;
   } else {
     let segmentWidth = (GAME_WIDTH - 200) / 3; 
-    bottomPlatforms.push({x:0, y: GAME_HEIGHT - 50, width: segmentWidth, height:50, start:true});
-    bottomPlatforms.push({x:segmentWidth+100, y: GAME_HEIGHT - 50, width: segmentWidth, height:50});
-    bottomPlatforms.push({x:2*(segmentWidth+100), y: GAME_HEIGHT - 50, width: segmentWidth, height:50});
+    bottomPlatforms.push({x:0, y: GAME_HEIGHT - bottomPlatformHeight, width: segmentWidth, height:bottomPlatformHeight, start:true});
+    bottomPlatforms.push({x:segmentWidth+100, y: GAME_HEIGHT - bottomPlatformHeight, width: segmentWidth, height:bottomPlatformHeight, start:false});
+    bottomPlatforms.push({x:2*(segmentWidth+100), y: GAME_HEIGHT - bottomPlatformHeight, width: segmentWidth, height:bottomPlatformHeight, start:false});
     dog.x = 50;
   }
 
@@ -585,14 +594,30 @@ function rectCollision(a,b) {
           a.y+a.height > b.y);
 }
 
+// Scale title image to fit nicely
+function drawTitleImage() {
+  let maxWidth = GAME_WIDTH * 0.8;
+  let maxHeight = GAME_HEIGHT * 0.8;
+  let width = titleImage.width;
+  let height = titleImage.height;
+
+  let scaleFactor = Math.min(maxWidth / width, maxHeight / height);
+  if (scaleFactor < 1) {
+    width *= scaleFactor;
+    height *= scaleFactor;
+  }
+
+  let imgX = (GAME_WIDTH - width)/2;
+  let imgY = (GAME_HEIGHT - height)/2 - 20; // Slight up shift
+  ctx.drawImage(titleImage, imgX, imgY, width, height);
+}
+
 function draw() {
   updateScaleAndOffsets();
   
-  // Clear entire canvas
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
   ctx.save();
-  // Apply scaling and centering transform
   ctx.translate(offsetX, offsetY);
   ctx.scale(scale, scale);
 
@@ -602,9 +627,7 @@ function draw() {
   if (gameState === STATE_TITLE) {
     ctx.fillStyle = '#000';
     ctx.fillRect(0,0,GAME_WIDTH,GAME_HEIGHT);
-    let imgX = (GAME_WIDTH - titleImage.width)/2;
-    let imgY = (GAME_HEIGHT - titleImage.height)/2 - 50;
-    ctx.drawImage(titleImage, imgX, imgY);
+    drawTitleImage();
   } else if (gameState === STATE_PLAY) {
     for (let p of platforms) {
       if (p.start) {
